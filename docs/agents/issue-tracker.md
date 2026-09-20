@@ -12,6 +12,20 @@ Reading upstream is fine and often useful — an upstream bug report is legitima
 
 If work here ever *should* go upstream, that is a human decision, made explicitly, outside these skills.
 
+## Working across two clones
+
+The firewall above has a structural consequence: **the clone you explore in is often not the clone you file in.** A grilling session run in an `igvteam/igv.js` checkout cannot publish anything here, and this fork holds none of that session's context. That gap will recur; it is not a one-off.
+
+Crossing it is a `/handoff`, not an issue body. Write the handoff file, open a fresh session in this clone against it, then let the normal flow resume — `/to-spec`, `/to-tickets`, `/implement`.
+
+What belongs where:
+
+- **Handoff file** — the re-hydration payload: the reasoning, the options weighed and rejected, the provenance of the grilling. Link to it from the issue; never paste it in.
+- **Issue** — the contract: problem, solution, and the decisions that bind an implementer. House style caps apply.
+- **`docs/specs/<slug>.md`** — a spec that outgrew its issue. The issue links to it. Worked example: issue #1 carries the contract, [`docs/specs/load-resilience.md`](../specs/load-resilience.md) carries the user stories and the decisions in full.
+
+**Symptom that this step was skipped:** an issue that reads like a session transcript — user stories enumerated, alternatives weighed inline, notes addressed to whoever implements it. That material is re-hydration doing its job in the wrong artifact. Move it to the handoff or the spec file and leave the contract behind.
+
 ## Conventions
 
 Commands resolve to `turner/igv.js` via the pinned default; `--repo turner/igv.js` is shown for clarity and is safe to keep.
