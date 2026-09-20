@@ -12,6 +12,20 @@ Reading upstream is fine and often useful — an upstream bug report is legitima
 
 If work here ever *should* go upstream, that is a human decision, made explicitly, outside these skills.
 
+## Working across two clones
+
+The firewall above has a structural consequence: **the clone you explore in is often not the clone you file in.** A grilling session run in an `igvteam/igv.js` checkout cannot publish anything here, and this fork holds none of that session's context. That gap will recur; it is not a one-off.
+
+Crossing it is a `/handoff`, not an issue body. Write the handoff file, open a fresh session in this clone against it, then let the normal flow resume — `/to-spec`, `/to-tickets`, `/implement`.
+
+What belongs where:
+
+- **Handoff file** — the re-hydration payload: the reasoning, the options weighed and rejected, the provenance of the grilling. Link to it from the issue; never paste it in.
+- **Issue** — the contract: problem, solution, and the decisions that bind an implementer. House style caps apply.
+- **`docs/specs/<slug>.md`** — a spec that outgrew its issue. The issue links to it. Worked example: issue #1 carries the contract, [`docs/specs/load-resilience.md`](../specs/load-resilience.md) carries the user stories and the decisions in full.
+
+**Symptom that this step was skipped:** an issue that reads like a session transcript — user stories enumerated, alternatives weighed inline, notes addressed to whoever implements it. That material is re-hydration doing its job in the wrong artifact. Move it to the handoff or the spec file and leave the contract behind.
+
 ## Conventions
 
 Commands resolve to `turner/igv.js` via the pinned default; `--repo turner/igv.js` is shown for clarity and is safe to keep.
@@ -22,6 +36,48 @@ Commands resolve to `turner/igv.js` via the pinned default; `--repo turner/igv.j
 - **Comment on an issue**: `gh issue comment <number> --body "..."`
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
+
+## House style: brevity
+
+Everything written to the tracker — tickets, agent briefs, triage comments, PR bodies — is a working document, not a report. Write to the cap, then cut.
+
+| Document | Cap |
+| --- | --- |
+| Ticket body (`/to-tickets`) | 150 words |
+| Agent brief (`/triage` → `ready-for-agent`) | 250 words |
+| Triage comment, needs-info notes | 100 words |
+| PR body | 100 words |
+
+A spec published by `/to-spec` is **exempt**. It is the condensate of a whole grilling session; cutting it throws that thinking away. Everything downstream of it is disposable and gets the cap.
+
+**`gh pr create` bypasses `.github/pull_request_template.md`** — GitHub applies that file only in the web UI. When opening a PR from the CLI, reproduce its shape by hand: `## What`, `## Why`, `## Verified by`, then `Closes #<n>`.
+
+These rules override any template a skill supplies:
+
+- **Omit a section rather than fill it.** A template's headings are available, not mandatory. Drop "Current behavior" when the title already says it. Drop "Out of scope" unless someone could plausibly overreach.
+- One line per bullet. No sub-bullets.
+- Don't restate the title, the parent issue, or the conversation that produced the ticket. The reader has them.
+- **Prefer a pointer to a paragraph** — `trackViewport.js:FeatureCache`, `TrackBase.getState()`, `chromAlias*.js`. This overrides "never reference file paths" in the triage skill's `AGENT-BRIEF.md`: a stale pointer costs one grep, and the prose written to avoid it costs every reader.
+- No preamble, no summary of what the document is about to say, no closing recap.
+
+### Worked example — an agent brief at the right length
+
+```markdown
+## Agent Brief
+
+**Category:** bug
+
+Locus search by RefSeq accession fails on 2bit genomes: the search path
+string-matches chromosome names instead of resolving through `chromAlias*.js`.
+
+**Acceptance criteria:**
+- [ ] `NC_000001.11` and `chr1` resolve to the same locus
+- [ ] Regression test covers a genome whose primary names are accessions
+
+**Out of scope:** the alias file loaders themselves.
+```
+
+Note what is absent: no "Current behavior" heading restating the title, no "Key interfaces" list where one symbol name does the job, no worked prose where a pointer suffices. Match this register, not the longer examples in the skill's own reference docs.
 
 ## Pull requests as a triage surface
 
