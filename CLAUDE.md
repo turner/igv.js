@@ -100,3 +100,16 @@ Subclass `TrackBase` and implement `getFeatures(chr, start, end, bpPerPixel, vie
 - No bulleted lists, no recaps of what changed file-by-file
 - Add a body only when the *why* is genuinely non-obvious from the diff — then one or two sentences, not a summary of the change.
 
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles, each label string equal to its name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — one root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
