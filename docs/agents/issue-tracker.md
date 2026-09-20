@@ -23,6 +23,48 @@ Commands resolve to `turner/igv.js` via the pinned default; `--repo turner/igv.j
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
 
+## House style: brevity
+
+Everything written to the tracker — tickets, agent briefs, triage comments, PR bodies — is a working document, not a report. Write to the cap, then cut.
+
+| Document | Cap |
+| --- | --- |
+| Ticket body (`/to-tickets`) | 150 words |
+| Agent brief (`/triage` → `ready-for-agent`) | 250 words |
+| Triage comment, needs-info notes | 100 words |
+| PR body | 100 words |
+
+A spec published by `/to-spec` is **exempt**. It is the condensate of a whole grilling session; cutting it throws that thinking away. Everything downstream of it is disposable and gets the cap.
+
+**`gh pr create` bypasses `.github/pull_request_template.md`** — GitHub applies that file only in the web UI. When opening a PR from the CLI, reproduce its shape by hand: `## What`, `## Why`, `## Verified by`, then `Closes #<n>`.
+
+These rules override any template a skill supplies:
+
+- **Omit a section rather than fill it.** A template's headings are available, not mandatory. Drop "Current behavior" when the title already says it. Drop "Out of scope" unless someone could plausibly overreach.
+- One line per bullet. No sub-bullets.
+- Don't restate the title, the parent issue, or the conversation that produced the ticket. The reader has them.
+- **Prefer a pointer to a paragraph** — `trackViewport.js:FeatureCache`, `TrackBase.getState()`, `chromAlias*.js`. This overrides "never reference file paths" in the triage skill's `AGENT-BRIEF.md`: a stale pointer costs one grep, and the prose written to avoid it costs every reader.
+- No preamble, no summary of what the document is about to say, no closing recap.
+
+### Worked example — an agent brief at the right length
+
+```markdown
+## Agent Brief
+
+**Category:** bug
+
+Locus search by RefSeq accession fails on 2bit genomes: the search path
+string-matches chromosome names instead of resolving through `chromAlias*.js`.
+
+**Acceptance criteria:**
+- [ ] `NC_000001.11` and `chr1` resolve to the same locus
+- [ ] Regression test covers a genome whose primary names are accessions
+
+**Out of scope:** the alias file loaders themselves.
+```
+
+Note what is absent: no "Current behavior" heading restating the title, no "Key interfaces" list where one symbol name does the job, no worked prose where a pointer suffices. Match this register, not the longer examples in the skill's own reference docs.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
