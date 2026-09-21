@@ -11,6 +11,7 @@
 <script type="module">
 
     import igv from "../../js/index.js"
+    import {getAllBrowsers} from "../../js/igv-create.js"
 
     // Driven by test/e2e/harness.js. Each entry point resolves to a plain, serializable result so the test can
     // assert on what an embedder observes: whether the call resolved, or the message it rejected with.
@@ -42,6 +43,11 @@
     window.search = locus => settle(() => window.browser.search(locus))
 
     window.currentLoci = () => window.browser.currentLoci()
+
+    window.genomeId = () => window.browser.genome.id
+
+    // How many browsers igv.js keeps in its list of browsers
+    window.browserCount = () => getAllBrowsers().length
 
     window.listenForLoadFailures = () => window.browser.on("loadfailures", recordLoadFailures)
 
