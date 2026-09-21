@@ -79,6 +79,21 @@ class IGVPage {
         return this.page.evaluate(genome => window.loadGenome(genome), genome)
     }
 
+    /** Call browser.search in the page. Resolves like createBrowser. */
+    search(locus) {
+        return this.page.evaluate(locus => window.search(locus), locus)
+    }
+
+    /** The locus displayed, as browser.currentLoci() gives it: a string, or an array in multi-locus view. */
+    currentLoci() {
+        return this.page.evaluate(() => window.currentLoci())
+    }
+
+    /** The genome definition object passed to createBrowser, read back after the load. */
+    genomeDefinition() {
+        return this.page.evaluate(() => window.genomeDefinition())
+    }
+
     /** Subscribe to loadfailures on the existing browser, as an embedder would after createBrowser. */
     listenForLoadFailures() {
         return this.page.evaluate(() => window.listenForLoadFailures())

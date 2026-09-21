@@ -30,6 +30,9 @@ class Genome {
     #wgChromosomeNames
     #aliasRecordCache = new Map()
 
+    // Set when the sequence source failed and chrom sizes were loaded in its place: {url, error}
+    sequenceFallback
+
     static async createGenome(options, browser) {
 
         updateReference(options)
@@ -53,8 +56,8 @@ class Genome {
 
         const config = this.config
 
-        // Load sequence
-        this.sequence = await loadSequence(config, this.browser)
+        // Load sequence, falling back to a sequence-less genome from chrom sizes if it fails
+        this.sequence = await this.#loadSequenceWithFallback(config)
 
         // Load cytobands.  This is optional but required to support the ideogram.  Only needed for whole genome view
         if (false !== config.showIdeogram && false !== config.wholeGenomeView) {
@@ -114,6 +117,30 @@ class Genome {
         if (this.wholeGenomeView) {
             const l = this.#wgChromosomeNames.reduce((accumulator, currentValue) => accumulator + this.chromosomes.get(currentValue).bpLength, 0)
             this.chromosomes.set("all", new Chromosome("all", 0, l))
+        }
+    }
+
+    /**
+     * Load the sequence source.  If it fails and the definition has a chrom sizes URL, load a sequence-less
+     * sequence from chrom sizes instead and record the failure in sequenceFallback.  The definition is not changed.
+     */
+    async #loadSequenceWithFallback(config) {
+        try {
+            return await loadSequence(config, this.browser)
+        } catch (error) {
+            if (!config.chromSizesURL) {
+                throw error
+            }
+            console.error(error)
+            let sequence
+            try {
+                sequence = await loadSequence({format: "chromsizes", fastaURL: config.chromSizesURL}, this.browser)
+            } catch (chromSizesError) {
+                console.error(chromSizesError)
+                throw error   // Reject with the sequence failure, as without the fallback
+            }
+            this.sequenceFallback = {url: sequenceURL(config), error}
+            return sequence
         }
     }
 
@@ -461,6 +488,12 @@ function generateGenomeID(config) {
     } else {
         return ""
     }
+}
+
+// The sequence source URL, in the order of precedence loadSequence gives it
+function sequenceURL(config) {
+    const url = config.twoBitURL || config.fastaURL || config.url
+    return url && url.name ? url.name : url
 }
 
 export default Genome
