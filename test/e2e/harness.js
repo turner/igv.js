@@ -62,9 +62,20 @@ class IGVPage {
         return this.page.evaluate(config => window.createBrowser(config), {loadDefaultGenomes: false, ...config})
     }
 
+    /** Call browser.loadTrackList in the page. Resolves to {resolved: true}, or {resolved: false, message}. */
+    loadTrackList(configs) {
+        return this.page.evaluate(configs => window.loadTrackList(configs), configs)
+    }
+
     /** Track labels as the user sees them (Playwright locators pierce igv's open shadow root). */
     trackLabels() {
         return this.page.locator("#igv-div .igv-track-label")
+    }
+
+    /** Rendered widths of every track's data panel, in the first locus column. */
+    viewportWidths() {
+        return this.page.locator("#igv-div .igv-column").first().locator(".igv-viewport")
+            .evaluateAll(elements => elements.map(e => e.getBoundingClientRect().width))
     }
 }
 

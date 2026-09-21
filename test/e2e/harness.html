@@ -12,16 +12,23 @@
 
     import igv from "../../js/index.js"
 
-    // Driven by test/e2e/harness.js. createBrowser resolves to a plain, serializable result so the
-    // test can assert on what an embedder observes: whether the call resolved, or the message it rejected with.
-    window.createBrowser = async config => {
+    // Driven by test/e2e/harness.js. Each entry point resolves to a plain, serializable result so the test can
+    // assert on what an embedder observes: whether the call resolved, or the message it rejected with.
+    const settle = async call => {
         try {
-            window.browser = await igv.createBrowser(document.getElementById("igv-div"), config)
+            await call()
             return {resolved: true}
         } catch (e) {
             return {resolved: false, message: e.message || String(e)}
         }
     }
+
+    window.createBrowser = config => settle(async () => {
+        window.browser = await igv.createBrowser(document.getElementById("igv-div"), config)
+    })
+
+    window.loadTrackList = configs => settle(() => window.browser.loadTrackList(configs))
+
     window.harnessReady = true
 
 </script>
