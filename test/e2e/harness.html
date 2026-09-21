@@ -23,11 +23,25 @@
         }
     }
 
-    window.createBrowser = config => settle(async () => {
+    // Every loadfailures event a listener received, in order. Functions can't cross page.evaluate, so the
+    // listener is registered here: through createBrowser's `listeners` option, or on the browser afterwards.
+    window.loadFailureEvents = []
+    const recordLoadFailures = failures => window.loadFailureEvents.push(failures)
+
+    window.createBrowser = (config, {listen} = {}) => settle(async () => {
+        if (listen) {
+            config = {...config, listeners: {loadfailures: recordLoadFailures}}
+        }
         window.browser = await igv.createBrowser(document.getElementById("igv-div"), config)
     })
 
+    window.listenForLoadFailures = () => window.browser.on("loadfailures", recordLoadFailures)
+
     window.loadTrackList = configs => settle(() => window.browser.loadTrackList(configs))
+
+    window.loadSession = session => settle(() => window.browser.loadSession(session))
+
+    window.loadGenome = genome => settle(() => window.browser.loadGenome(genome))
 
     window.harnessReady = true
 

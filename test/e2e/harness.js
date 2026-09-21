@@ -58,13 +58,40 @@ class IGVPage {
      * Call igv.createBrowser in the page. Resolves to {resolved: true}, or {resolved: false, message}.
      * The igv.org default genome list is off, as it is fetched from the network.
      */
-    createBrowser(config) {
-        return this.page.evaluate(config => window.createBrowser(config), {loadDefaultGenomes: false, ...config})
+    createBrowser(config, {listen = false} = {}) {
+        return this.page.evaluate(
+            ([config, options]) => window.createBrowser(config, options),
+            [{loadDefaultGenomes: false, ...config}, {listen}])
     }
 
     /** Call browser.loadTrackList in the page. Resolves to {resolved: true}, or {resolved: false, message}. */
     loadTrackList(configs) {
         return this.page.evaluate(configs => window.loadTrackList(configs), configs)
+    }
+
+    /** Call browser.loadSession in the page with a session object. Resolves like createBrowser. */
+    loadSession(session) {
+        return this.page.evaluate(session => window.loadSession(session), session)
+    }
+
+    /** Call browser.loadGenome in the page — a genome switch. Resolves like createBrowser. */
+    loadGenome(genome) {
+        return this.page.evaluate(genome => window.loadGenome(genome), genome)
+    }
+
+    /** Subscribe to loadfailures on the existing browser, as an embedder would after createBrowser. */
+    listenForLoadFailures() {
+        return this.page.evaluate(() => window.listenForLoadFailures())
+    }
+
+    /** The argument of every loadfailures event received so far (see the `listen` option of createBrowser). */
+    loadFailureEvents() {
+        return this.page.evaluate(() => window.loadFailureEvents)
+    }
+
+    /** The browser's alert dialog (viewports hold alert dialogs of their own). */
+    alert() {
+        return this.page.locator("#igv-div .igv-container > .igv-ui-alert-dialog-container")
     }
 
     /** Track labels as the user sees them (Playwright locators pierce igv's open shadow root). */
