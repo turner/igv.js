@@ -899,7 +899,8 @@ class Browser {
                 promises.push(this.#loadTrackHelper(config))
             }
 
-            const loadedTracks = await Promise.all(promises)
+            // Settle every load before ordering and resizing, so a failure doesn't strand the tracks that loaded
+            const results = await Promise.allSettled(promises)
 
             // If any tracks are selected show the selection buttons
             if (this.trackViews.some(({track}) => track.selected)) {
@@ -912,7 +913,12 @@ class Browser {
 
             this.fireEvent('trackorderchanged', [this.getTrackOrder()])
 
-            return loadedTracks
+            const failure = results.find(({status}) => status === 'rejected')
+            if (failure) {
+                throw failure.reason
+            }
+
+            return results.map(({value}) => value)
 
         } finally {
             this.stopSpinner()   // TODO  this.stopSpinner()
