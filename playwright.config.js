@@ -10,7 +10,8 @@ export default defineConfig({
     retries: process.env.CI ? 1 : 0,
     reporter: process.env.CI ? "github" : "list",
     use: {
-        baseURL: `http://127.0.0.1:${port}`,
+        // localhost rather than 127.0.0.1: igv.js offers its clipboard menu items only on https or localhost
+        baseURL: `http://localhost:${port}`,
         trace: "retain-on-failure"
     },
     projects: [

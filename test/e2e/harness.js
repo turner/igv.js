@@ -114,6 +114,21 @@ class IGVPage {
         return this.page.locator("#igv-div .igv-track-label")
     }
 
+    /**
+     * Right-click the middle of the first data panel of the first track of `type`, as a user would, and return
+     * the labels of the context menu that opens.
+     */
+    async contextMenu(type) {
+        const {x, y} = await this.page.evaluate(type => window.trackViewportCenter(type), type)
+        await this.page.mouse.click(x, y, {button: "right"})
+        const menu = this.page.locator("#igv-div .igv-menu-popup").filter({visible: true})
+        await expect(menu).toBeVisible()
+        const labels = await menu.locator(".context-menu").allInnerTexts()
+        await menu.locator(".igv-menu-popup-header > div").click()   // Close it, so it cannot cover the next click
+        await expect(menu).toBeHidden()
+        return labels
+    }
+
     /** Rendered widths of every track's data panel, in the first locus column. */
     viewportWidths() {
         return this.page.locator("#igv-div .igv-column").first().locator(".igv-viewport")
