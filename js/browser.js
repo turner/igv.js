@@ -625,13 +625,23 @@ class Browser {
         }
 
         // Load a hidden track -- used to populate searchable database without creating a track
+        const loadFailures = []
+        const failedHidden = new Set()
         const configHidden = nonLocalTrackConfigurations.filter(config => true === config.hidden)
         for (const config of configHidden) {
-            const featureSource = FeatureSource(config, this.genome)
-            await featureSource.getFeatures({chr: "1", start: 0, end: Number.MAX_SAFE_INTEGER})
+            try {
+                const featureSource = FeatureSource(config, this.genome)
+                await featureSource.getFeatures({chr: "1", start: 0, end: Number.MAX_SAFE_INTEGER})
+            } catch (error) {
+                console.error(error)
+                loadFailures.push(trackLoadFailure(config, error))
+                failedHidden.add(config)   // Already reported; don't load it again as a track
+            }
         }
 
-        await this.loadTrackList(nonLocalTrackConfigurations)
+        const trackList = nonLocalTrackConfigurations.filter(config => !failedHidden.has(config))
+        loadFailures.push(...await this.#loadTrackListTolerantly(trackList))
+        this.#reportLoadFailures(loadFailures)
 
         // If an initial locus is defined and represents a single basedo a "search" here.  This will force micro
         // adjustments after width of track column(s) is known.  This can be an issue when the center gide is shown
@@ -791,7 +801,8 @@ class Browser {
             tracks.push({type: "sequence", order: defaultSequenceTrackOrder})
         }
 
-        await this.loadTrackList(tracks)
+        const loadFailures = await this.#loadTrackListTolerantly(tracks)
+        this.#reportLoadFailures(loadFailures)
 
         return this.genome
     }
@@ -883,6 +894,60 @@ class Browser {
      */
     async loadTrackList(configList) {
 
+        const results = await this.#settleTrackList(configList)
+
+        const failure = results.find(({status}) => status === 'rejected')
+        if (failure) {
+            throw failure.reason
+        }
+
+        return results.map(({value}) => value)
+    }
+
+    /**
+     * Load a list of tracks for a session or genome load, which tolerates failures: the tracks that load are
+     * added, and the ones that fail are returned as load failures rather than thrown.
+     *
+     * @param configList  Array of track configurations
+     * @returns {Promise<Array>}  Promise for one {kind, url, message} load failure per track that failed
+     */
+    async #loadTrackListTolerantly(configList) {
+
+        const results = await this.#settleTrackList(configList)
+
+        return results
+            .map((result, i) => ({result, config: configList[i]}))
+            .filter(({result}) => result.status === 'rejected')
+            .map(({result, config}) => trackLoadFailure(config, result.reason))
+    }
+
+    /**
+     * Report every failure in a session or genome load, once: a single loadfailures event carrying all of them.
+     *
+     * @param loadFailures  Array of {kind, url, message}
+     */
+    #reportLoadFailures(loadFailures) {
+
+        if (0 === loadFailures.length) {
+            return
+        }
+
+        this.fireEvent('loadfailures', [loadFailures])
+
+        // One combined alert: the alert dialog is a single instance, so separate alerts would show only the last
+        if (false !== this.config.showLoadFailureAlert) {
+            const lines = loadFailures.map(({url, message}) => `${escapeHTML(url)}<br>${escapeHTML(message)}`)
+            this.alert.present(`Some resources could not be loaded:<br><br>${lines.join('<br><br>')}`)
+        }
+    }
+
+    /**
+     * Load every track in the list, settling each load, then order and resize the tracks that loaded.
+     *
+     * @returns {Promise<Array>}  Promise for one settled result per configuration, as from Promise.allSettled
+     */
+    async #settleTrackList(configList) {
+
         try {
             this.startSpinner()   // TODO this.startSpinner() when we have one
 
@@ -913,12 +978,7 @@ class Browser {
 
             this.fireEvent('trackorderchanged', [this.getTrackOrder()])
 
-            const failure = results.find(({status}) => status === 'rejected')
-            if (failure) {
-                throw failure.reason
-            }
-
-            return results.map(({value}) => value)
+            return results
 
         } finally {
             this.stopSpinner()   // TODO  this.stopSpinner()
@@ -958,22 +1018,7 @@ class Browser {
             track = await this.createTrack(config)
 
         } catch (error) {
-
-            let msg = error.message || error.error || error.toString()
-
-            const httpMessages =
-                {
-                    "401": "Access unauthorized",
-                    "403": "Access forbidden",
-                    "404": "Not found"
-                }
-
-            if (httpMessages.hasOwnProperty(msg)) {
-                msg = httpMessages[msg]
-            }
-
-            msg = `${msg} : ${FileUtils.isFile(config.url) ? config.url.name : config.url}`
-            const err = new Error(msg)
+            const err = new Error(`${describeLoadError(error)} : ${describeTrackURL(config)}`, {cause: error})
             console.error(err)
             throw err
         }
@@ -2681,6 +2726,45 @@ toggleTrackLabels(trackViews, isVisible) {
                 }
             }
         }
+    }
+}
+
+const httpMessages = {
+    "401": "Access unauthorized",
+    "403": "Access forbidden",
+    "404": "Not found"
+}
+
+function describeLoadError(error) {
+    const msg = error.message || error.error || error.toString()
+    return httpMessages.hasOwnProperty(msg) ? httpMessages[msg] : msg
+}
+
+function escapeHTML(string) {
+    return String(string)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+}
+
+function describeTrackURL(config) {
+    return FileUtils.isFile(config.url) ? config.url.name : config.url
+}
+
+/**
+ * A track load failure, as reported by the loadfailures event.
+ *
+ * @param config  The track configuration, possibly as json
+ * @param error  The error the track load rejected with
+ */
+function trackLoadFailure(config, error) {
+    if (StringUtils.isString(config)) {
+        config = JSON.parse(config)
+    }
+    return {
+        kind: 'track',
+        url: describeTrackURL(config) || config.fastaURL || config.name,
+        message: describeLoadError(error.cause || error)
     }
 }
 
