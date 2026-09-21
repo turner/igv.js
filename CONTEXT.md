@@ -26,7 +26,8 @@ _Avoid_: degraded genome, reduced genome
 Loading a **sequence-less genome** in place of a **genome** whose **sequence source** failed. A **genome definition** that asks for chromosome sizes only gives a **sequence-less genome**, but that is not a **sequence fallback**.
 
 **Established session**:
-The state of the browser once its **genome** has loaded exactly as its **genome definition** describes: its real **sequence source**, every **genome track**, and the **sequence track**. After a **sequence fallback**, or when a **genome track** failed, the session is not established. It can only be used to pick a different **genome**, and it cannot be saved.
+The state of the browser once its **genome** has loaded exactly as its **genome definition** describes: its real **sequence source**, every **genome track**, and the **sequence track**. After a **sequence fallback**, or when a **genome track** failed, the session is not established.
+_Descoped (#8)_: nothing refuses to save or share a session that is not established. The term is kept for discussion only.
 _Avoid_: fully loaded, complete session
 
 ### Tracks
@@ -48,7 +49,7 @@ The tracks a session or `createBrowser` configuration lists, as opposed to the *
 - A **genome** has zero or more **genome tracks**. Loading a session loads the **genome tracks** first, then the **session tracks**.
 - The **sequence track** reads from the **genome**'s **sequence source**. It never loads a file of its own unless its configuration names one.
 
-- A session is saved only when it is an **established session**. Work is assumed to begin only once the session is established.
+- ~~A session is saved only when it is an **established session**.~~ Descoped (#8): any session can be saved.
 
 ## Flagged ambiguities
 

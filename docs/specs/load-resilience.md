@@ -18,8 +18,8 @@ Vocabulary is in [`CONTEXT.md`](../../CONTEXT.md).
 5. As an IGV-Web user who has just seen such an alert, I want the genome selector to work, so that I can switch to a genome that loads completely and start work.
 6. As an IGV-Web user, I want a failed genome switch to leave my current genome and tracks in place, so that trying a genome that turns out to be broken costs me nothing.
 7. As an IGV-Web user working on a sequence-less genome, I want the menu items that need bases to be absent rather than present and inert, so that I am not left wondering whether the app is broken.
-8. As an IGV-Web user working on a sequence-less genome, I want saving or sharing a session to be unavailable, so that I do not create a session that misrepresents which genome it uses.
-9. As an IGV-Web user who has switched to a genome that loads completely, I want saving and sharing to become available again, so that the restriction lasts only as long as the problem.
+8. ~~As an IGV-Web user working on a sequence-less genome, I want saving or sharing a session to be unavailable, so that I do not create a session that misrepresents which genome it uses.~~ _Descoped (#8)._
+9. ~~As an IGV-Web user who has switched to a genome that loads completely, I want saving and sharing to become available again, so that the restriction lasts only as long as the problem.~~ _Descoped (#8)._
 10. As an IGV-Web user restoring a session that lists a track whose URL has gone stale, I want the rest of the session to open, so that one dead link does not cost me the whole session.
 11. As an IGV-Web user, I want a genome definition that lists no tracks at all to open normally, so that minimal genomes are not treated as failures.
 12. As an igv.js embedder, I want `createBrowser` to resolve when parts of the genome fail, so that the code after it — building my own UI around the browser — still runs.
@@ -61,7 +61,7 @@ Vocabulary is defined in `CONTEXT.md` on this branch; the decision is recorded i
 
 **A genome that has no bases**
 
-- A genome exposes whether it has bases. The sequence-less state must distinguish its two causes: a sequence fallback, versus a genome definition that asked for chrom sizes only. Hiding menu items applies to both. Refusing to save applies only to the fallback.
+- A genome exposes whether it has bases. The sequence-less state must distinguish its two causes: a sequence fallback, versus a genome definition that asked for chrom sizes only. Hiding menu items applies to both. ~~Refusing to save applies only to the fallback.~~ _Descoped (#8)._
 - The menu items that need bases are hidden while the genome has none: view, copy and BLAT of the visible sequence, and view and copy of a feature's sequence.
 - Everything else already tolerates the absence of bases and is left alone: alignment rendering skips mismatch coloring and logs, and existing null-handling paths remain as a backstop.
 
@@ -72,7 +72,7 @@ Vocabulary is defined in `CONTEXT.md` on this branch; the decision is recorded i
 - By default igv.js also presents one combined alert listing every failure in that load. `showLoadFailureAlert: false` turns it off. Registering a listener does not turn it off.
 - One combined alert, not one per failure: the alert dialog is a single instance whose body is replaced by each call, so separate alerts would show only the last failure.
 
-**Established session**
+**Established session** — _Descoped in [#8](https://github.com/turner/igv.js/issues/8). Nothing below is implemented; saving and sharing are never refused._
 
 - A browser is an established session once its genome loaded as its definition describes: the real sequence source, every genome track, and the sequence track. A genome definition listing no tracks is established once its sequence loads.
 - Saving or sharing a session is refused unless the session is established. Both the session-object and the compressed-session entry points enforce this, so every embedder is covered.
@@ -88,18 +88,18 @@ Vocabulary is defined in `CONTEXT.md` on this branch; the decision is recorded i
 - Start fresh from the web app's `master`. The `dat` branch, which worked around this from outside by retrying reduced copies of the genome, is abandoned; its only salvageable part is its Playwright test cases.
 - The app's own fallbacks for a failed session file and a failed restored genome stay, since a session file that cannot be fetched still rejects.
 - The app drops its own failure alert in favor of the igv.js one.
-- Save session and Share are disabled while the session is not established. Load session, the genome selector and track loading stay enabled.
+- ~~Save session and Share are disabled while the session is not established.~~ _Descoped (#8)._ Load session, the genome selector and track loading stay enabled.
 - Ships together with the igv.js release; the web app gets no interim patch, since the server-side CORS problem that triggered #355 has been fixed.
 
 ## Testing Decisions
 
-A good test here asserts what a user or an embedder can observe: a browser exists, a named track is present or absent, an alert names a URL, a menu item is there or not, saving throws, the genome selector still works. It must not assert on internal call sequences or on which private path produced the result — those are the parts most likely to be refactored.
+A good test here asserts what a user or an embedder can observe: a browser exists, a named track is present or absent, an alert names a URL, a menu item is there or not, the genome selector still works. It must not assert on internal call sequences or on which private path produced the result — those are the parts most likely to be refactored.
 
 **One seam: a browser-level test in igv.js, driven through Playwright.**
 
 - The test loads a page that calls `igv.createBrowser` in real Chromium, blocks specific URLs by pattern, and asserts on the result. This is the highest seam available and matches how the failure occurs in the wild. It was the technique used to diagnose #355 in the first place.
 - Fixtures are local and served from the repo, so the suite needs no network. `test/data/genomes/hg38.chrom.sizes` already exists; a small custom genome definition pointing at local sequence and track files, with one of them blocked, gives a deterministic case for each scenario.
-- Cases: sequence blocked; a genome track blocked; both blocked; sequence and chrom sizes both blocked, which must reject and leave nothing behind; switching genome after a failure; saving refused while unestablished and permitted after switching to a genome that loads completely; the alert on by default and suppressed by the configuration option; the event carrying the expected failures.
+- Cases: sequence blocked; a genome track blocked; both blocked; sequence and chrom sizes both blocked, which must reject and leave nothing behind; switching genome after a failure; ~~saving refused while unestablished and permitted after switching to a genome that loads completely~~ (descoped, #8); the alert on by default and suppressed by the configuration option; the event carrying the expected failures.
 - Why not the existing Node suite: `Browser` cannot be constructed under `test/utils/mockObjects.js` today. It fails on `attachShadow`, and stubbing that reveals further gaps such as `classList`. Making it constructible would mean extending the DOM mock or moving to jsdom, a change beneath every existing test file, and would still test lower than the behavior in question.
 - Prior art: the diagnosis probes in `igv-webapp-355-repro` (request blocking plus reading back the resulting state), and the Playwright tests on igv-webapp's abandoned `dat` branch.
 - Existing Node tests stay as they are. If the Playwright infrastructure proves heavier than expected, the agreed fallback is a genome-level unit test for the sequence fallback, following `test/testGenome.js`, plus the web-app tests for the rest — but that is a fallback, not the plan.
