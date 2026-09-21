@@ -5,7 +5,7 @@
 
 import {test as base, expect} from "@playwright/test"
 
-const DATA = "/test/e2e/data"
+export const DATA = "/test/e2e/data"
 
 // A custom genome whose every part is a local file, so each part can be blocked deterministically.
 export const TINY_GENOME = {
@@ -95,6 +95,26 @@ class IGVPage {
     /** The locus displayed, as browser.currentLoci() gives it: a string, or an array in multi-locus view. */
     currentLoci() {
         return this.page.evaluate(() => window.currentLoci())
+    }
+
+    /** The id of the browser's current genome. */
+    genomeId() {
+        return this.page.evaluate(() => window.genomeId())
+    }
+
+    /** How many browsers igv.js keeps in its list of browsers. */
+    browserCount() {
+        return this.page.evaluate(() => window.browserCount())
+    }
+
+    /** Everything igv.js has inserted into the container div. */
+    containerContents() {
+        return this.page.locator("#igv-div > *")
+    }
+
+    /** Regions of interest as the user sees them, in the first locus column. */
+    roiRegions() {
+        return this.page.locator("#igv-div .igv-column").first().locator(".igv-roi-region")
     }
 
     /** The genome definition object passed to createBrowser, read back after the load. */

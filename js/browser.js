@@ -679,17 +679,18 @@ class Browser {
      */
     async loadReference(genomeConfig, initialLocus) {
 
-        this.removeAllTracks()   // Do this first, before new genome is set
-        this.roiManager.clearROIs()
-
-        this.navbar.setEnableTrackSelection(false)
-
+        // Build the genome before clearing anything, so a genome that fails to load leaves the current one intact
         let genome
         if (genomeConfig.gbkURL) {
             genome = await loadGenbank(genomeConfig.gbkURL)
         } else {
             genome = await Genome.createGenome(genomeConfig, this)
         }
+
+        this.removeAllTracks()   // Do this before the new genome is set
+        this.roiManager.clearROIs()
+
+        this.navbar.setEnableTrackSelection(false)
 
         const genomeChange = undefined === this.genome || (this.genome.id !== genome.id)
 
