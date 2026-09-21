@@ -64,9 +64,13 @@ upstream/master ─────────────────────�
 proposed upstream. Feature branches are cut from it so that agents working on
 them can still read `CLAUDE.md`, `CONTEXT.md`, and the spec.
 
-**`load-resilience`** — the working branch. All seven tickets (#3–#9) land here
-as a sequence of commits. This is where you build, run, and test. One branch,
-not seven; see *The stacking question* below.
+**`load-resilience`** — the working branch. All seven tickets (#3–#9)
+accumulate here, one squashed commit per ticket. This is where you build, run,
+and test. One branch, not seven; see *The stacking question* below.
+
+**`ticket/<n>-<slug>`** — short-lived, one per ticket. Cut from
+`load-resilience`, merged back into it by PR, then deleted. See *Landing a
+ticket*.
 
 **`base/load-resilience`** — a marker pointing at the commit the feature branch
 started from. It is how we know later which commits are ours. Created once,
@@ -103,11 +107,64 @@ Develop against source, not `dist/`: serve the repo root over HTTP and open
 Once ticket #3 lands, the Playwright suite runs here too and is the real check
 for this feature — the Node suite cannot construct `Browser`.
 
-**Merging into the fork's `master`** is your own integration record, and is
-optional. Open a PR on `turner/igv.js` from `load-resilience` into `master`,
-review it, merge it. This does **not** contaminate anything upstream-bound,
-because `propose/load-resilience` is regenerated from the feature commits, never
-from `master`.
+## Landing a ticket
+
+**Tickets accumulate on `load-resilience`. They do not go into `master` one at a
+time.**
+
+Each ticket gets a short-lived branch and a PR whose base is `load-resilience`:
+
+```
+load-resilience ──●──────────●──────────●───►   one squashed commit per ticket
+                   \        / \        /
+                    ticket/3   ticket/4 ...
+```
+
+```bash
+git checkout -b ticket/3-playwright-harness load-resilience
+# ... build, test ...
+git push -u origin ticket/3-playwright-harness
+gh pr create --repo turner/igv.js --base load-resilience
+```
+
+**Squash-merge** the PR and delete the ticket branch. `load-resilience` then
+holds one clean commit per ticket, which is the readable series you'll offer
+upstream.
+
+**Close the issue by hand.** GitHub acts on `Closes #3` only when a PR merges
+into the *default* branch. These PRs target `load-resilience`, so after merging:
+
+```bash
+gh issue close 3 --comment "Landed in <sha> on load-resilience"
+```
+
+Closing it clears its blocking edges, which unblocks the next tickets.
+
+**Parallel tickets** (#4 and #9 after #3; #7 and #8 after #6) each branch from
+`load-resilience`. If both touch the same code, rebase the second onto
+`load-resilience` after the first merges.
+
+Per-ticket PRs are optional for solo work: committing straight to
+`load-resilience` also works. The PRs give a review checkpoint and a record per
+ticket, and squashing keeps the history clean, so they are the default.
+
+### Why not merge each ticket into `master`
+
+It adds ceremony and buys nothing:
+
+- **`load-resilience` is already the testbed.** You build and test there, not on
+  `master`.
+- **The proposal ignores `master`.** `propose/load-resilience` is rebuilt from
+  `base/load-resilience..load-resilience`, so nothing merged into `master` ever
+  reaches upstream.
+- **It creates the squash trap on your own side.** *Staying current* rebases
+  `load-resilience` onto `master`. If `master` already holds squashed copies of
+  your ticket commits, that rebase tries to reapply work that's already there,
+  giving conflicts or empty commits.
+
+Merge `load-resilience` into `master` **once, at the end**: when all seven
+tickets are done, or when upstream has taken the work. See *How the merge
+happens on your end*.
 
 ## Proposing to the IGV team
 
@@ -220,10 +277,11 @@ originals and produce a mess. Just `git fetch upstream` and retire the branch.
 
 ### How the merge happens on your end
 
-Independent of upstream, and in whatever order suits you. Merge
-`load-resilience` into your `master` via a PR on `turner/igv.js` whenever you are
-satisfied. That merge is your own record and your running build; it has no
-bearing on the proposal branch.
+Independent of upstream. Merge `load-resilience` into your `master` **once**,
+via a PR on `turner/igv.js`, when the whole feature is done — not ticket by
+ticket (see *Why not merge each ticket into `master`*). That merge is your own
+record; it has no bearing on the proposal branch. After it, retire
+`load-resilience`.
 
 ## Staying current with upstream
 
@@ -248,6 +306,8 @@ surface the same conflicts then.
 | --- | --- |
 | See what this fork adds | `git log --oneline upstream/master..master` |
 | See my feature commits | `git log --oneline base/load-resilience..load-resilience` |
+| Start a ticket | `git checkout -b ticket/<n>-<slug> load-resilience` |
+| Land a ticket | PR with `--base load-resilience`, squash-merge, `gh issue close <n>` |
 | Build and test | `npm test`, then serve the root and open `dev/igvjs.html` |
 | Generate the upstream PR branch | `git rebase --onto upstream/master base/load-resilience propose/load-resilience` |
 | Check the proposal is clean | `git diff --stat upstream/master` |
@@ -260,3 +320,5 @@ surface the same conflicts then.
    `docs/specs/`, this file) to a feature branch. Those edits belong on `master`.
 3. Never hand-edit a `propose/*` branch. It is generated.
 4. Never write `Closes #N` in an upstream PR. Their number space is not ours.
+5. Never merge a single ticket into `master`. Tickets accumulate on
+   `load-resilience`; `master` gets the feature once, at the end.
