@@ -7,6 +7,11 @@ import {assert} from 'chai'
 //https://ftp.ncbi.nlm.nih.gov/genomes/archive/old_genbank/Fungi/Candida_dubliniensis_CD36_uid38659/FM992689.gbk
 suite("testGenbank", function () {
 
+    test("a genbank genome has bases", async function () {
+        const genbank = await loadGenbank("test/data/gbk/pten_test.gbk")
+        assert.isTrue(genbank.hasBases)
+    })
+
     test("pten genbank", async function () {
 
         const url = "test/data/gbk/pten_test.gbk"

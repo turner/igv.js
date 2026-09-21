@@ -414,6 +414,11 @@ class FeatureTrack extends TrackBase {
 
     contextMenuItemList(clickState) {
 
+        // Every item here shows or copies the feature's bases
+        if (!this.browser.genome.hasBases) {
+            return undefined
+        }
+
         const features = this.clickedFeatures(clickState)
 
         if (undefined === features || 0 === features.length) {
