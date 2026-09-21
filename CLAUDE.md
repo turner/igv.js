@@ -14,11 +14,18 @@ npx eslint js          # lint (no npm script; config in eslint.config.js)
 
 `js/embedCss.js` is generated from `css/igv.scss`, imported by `browser.js`, and not checked in — so it must exist before *anything* runs, including the Node tests. `npm install` covers this automatically (the `prepare` script runs `npm run build`); you only need to regenerate by hand after editing SCSS, or if you installed with `--ignore-scripts`. `js/version.js` is likewise rewritten from `package.json` on every build.
 
-Tests use the **TDD interface** (`suite`/`test`, not `describe`/`it`) and **must be run from the repo root** — test data is referenced by repo-relative path (`test/data/...`).
+Node tests use the **TDD interface** (`suite`/`test`, not `describe`/`it`) and **must be run from the repo root** — test data is referenced by repo-relative path (`test/data/...`).
 
 ```bash
 npx mocha --ui tdd test/testBED.js              # single file
 npx mocha --ui tdd test/testBED.js -g "BED query"  # single test
+```
+
+A separate **Playwright** suite in `test/e2e/*.spec.js` drives `igv.createBrowser` in real Chromium; use it for anything that needs a `Browser` (which the Node mocks cannot construct). `test/e2e/server.js` serves the repo root, the `igvPage` fixture in `test/e2e/harness.js` aborts every off-site request, and `blockRequests(pattern)` fails chosen URLs. `TINY_GENOME` is built entirely from local files in `test/e2e/data/`.
+
+```bash
+npx playwright install chromium   # once
+npm run test:e2e                  # or: npx playwright test test/e2e/baseline.spec.js
 ```
 
 Every test file starts with `import "./utils/mockObjects.js"` (side-effect only), which installs globals — `document`, `window`, `File`, `XMLHttpRequest`, `DOMParser`, `atob`/`btoa` — so browser code runs under Node. `XMLHttpRequestMock` routes relative paths to the filesystem (with range-header support) and absolute URLs to the network, so most readers can be tested with no server. Genome fixtures come from `test/utils/MockGenome.js`.
@@ -43,7 +50,7 @@ New code must follow the same rule:
 
 Develop against the source, not `dist/`: the HTML files under `dev/` import `../js/index.js` directly as an ES module. Serve the repo root over HTTP and open e.g. `dev/igvjs.html`. `npm run build:dev-dashboard` regenerates `dev/dev.html`, a searchable index of every page under `dev/`.
 
-CI (`.github/workflows/ci_build.yml`) runs `npm install && npm test` on Node 24.
+CI (`.github/workflows/ci_build.yml`) runs `npm install && npm test` on Node 24, and the Playwright suite in a separate `e2e` job.
 
 ## Architecture
 

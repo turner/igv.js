@@ -19,6 +19,7 @@
     "watch:css": "node scripts/watchCss.cjs",
     "pretest": "npm run updateCSS",
     "test": "mocha --ui tdd",
+    "test:e2e": "playwright test",
     "build:dev-dashboard": "node scripts/buildDevDashboard.cjs"
   },
   "author": {
@@ -49,6 +50,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@gmod/cram": "^8.3.0",
+    "@playwright/test": "^1.63.0",
     "@rollup/plugin-strip": "^3.0.1",
     "@rollup/plugin-terser": "^1.0.0",
     "@xmldom/xmldom": "^0.9.12",

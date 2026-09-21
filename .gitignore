@@ -14,3 +14,5 @@ igv.js.iml
 /css/igv.css.map
 /remove-license.cjs
 /supp_btq351_bbiSuppFINAL.doc
+/test-results/
+/playwright-report/
