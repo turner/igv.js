@@ -19,7 +19,7 @@ export default defineConfig({
     ],
     webServer: {
         command: `node test/e2e/server.js ${port}`,
-        url: `http://127.0.0.1:${port}/test/e2e/harness.html`,
+        url: `http://localhost:${port}/test/e2e/harness.html`,
         reuseExistingServer: !process.env.CI
     }
 })

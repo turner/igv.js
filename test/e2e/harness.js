@@ -24,6 +24,14 @@ export const TINY_GENOME = {
     ]
 }
 
+// A genome definition that asks for chrom sizes only: a sequence-less genome that is not a sequence fallback.
+export const CHROM_SIZES_GENOME = {
+    id: "tiny-sizes",
+    name: "Tiny chrom sizes",
+    format: "chromsizes",
+    fastaURL: `${DATA}/tiny.chrom.sizes`
+}
+
 class IGVPage {
 
     constructor(page, baseURL) {

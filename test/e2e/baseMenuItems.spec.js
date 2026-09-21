@@ -1,6 +1,4 @@
-import {test, expect, TINY_GENOME} from "./harness.js"
-
-const DATA = "/test/e2e/data"
+import {test, expect, TINY_GENOME, CHROM_SIZES_GENOME} from "./harness.js"
 
 // Zoomed in far enough (under 1 bp per pixel) for the sequence track to offer its sequence items, and wholly
 // inside geneA so a click anywhere on the gene track lands on it.
@@ -8,8 +6,6 @@ const LOCUS = "chr1:201-400"
 
 const SEQUENCE_ITEMS = ["View visible sequence...", "Copy visible sequence", "BLAT visible sequence"]
 const FEATURE_ITEMS = ["View feature sequence", "Copy feature sequence"]
-
-const CHROM_SIZES_ONLY = {id: "tiny-sizes", name: "Tiny chrom sizes", format: "chromsizes", fastaURL: `${DATA}/tiny.chrom.sizes`}
 
 // The menu labels that offer bases
 const sequenceItems = labels => labels.filter(label => /sequence/.test(label))
@@ -39,7 +35,7 @@ test("after a sequence fallback the menu items that need bases are absent", asyn
 
 test("on a chrom-sizes-only genome the menu items that need bases are absent", async ({igvPage}) => {
 
-    await openAt(igvPage, {...CHROM_SIZES_ONLY, tracks: TINY_GENOME.tracks})
+    await openAt(igvPage, {...CHROM_SIZES_GENOME, tracks: TINY_GENOME.tracks})
 
     expect(sequenceItems(await igvPage.contextMenu("sequence"))).toEqual([])
     expect(sequenceItems(await igvPage.contextMenu("annotation"))).toEqual([])
@@ -47,7 +43,7 @@ test("on a chrom-sizes-only genome the menu items that need bases are absent", a
 
 test("the menu items return after switching to a genome that loads completely", async ({igvPage}) => {
 
-    await openAt(igvPage, CHROM_SIZES_ONLY)
+    await openAt(igvPage, CHROM_SIZES_GENOME)
     expect(await igvPage.loadGenome({...TINY_GENOME, id: "tiny-complete"})).toEqual({resolved: true})
     expect(await igvPage.search(LOCUS)).toEqual({resolved: true})
 

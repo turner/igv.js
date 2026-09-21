@@ -140,6 +140,11 @@ class Genbank {
     }
 
 
+    // A GenBank genome always carries its sequence
+    get hasBases() {
+        return true
+    }
+
     async getSequence(chr, start, end) {
         if (chr === this.chr) {
             return this.sequence.substring(start, end)
