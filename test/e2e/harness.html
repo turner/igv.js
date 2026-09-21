@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>igv.js Playwright harness</title>
+</head>
+<body>
+
+<div id="igv-div"></div>
+
+<script type="module">
+
+    import igv from "../../js/index.js"
+
+    // Driven by test/e2e/harness.js. createBrowser resolves to a plain, serializable result so the
+    // test can assert on what an embedder observes: whether the call resolved, or the message it rejected with.
+    window.createBrowser = async config => {
+        try {
+            window.browser = await igv.createBrowser(document.getElementById("igv-div"), config)
+            return {resolved: true}
+        } catch (e) {
+            return {resolved: false, message: e.message || String(e)}
+        }
+    }
+    window.harnessReady = true
+
+</script>
+
+</body>
+</html>
