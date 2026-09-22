@@ -94,6 +94,31 @@ class IGVPage {
         return this.page.evaluate(() => window.genomeId())
     }
 
+    /** The chromosome names of the browser's current genome. */
+    chromosomeNames() {
+        return this.page.evaluate(() => window.chromosomeNames())
+    }
+
+    /** How many sequence tracks the browser holds. */
+    sequenceTrackCount() {
+        return this.page.evaluate(() => window.sequenceTrackCount())
+    }
+
+    /** Subscribe to genomechange on the existing browser, as an embedder would after createBrowser. */
+    listenForGenomeChanges() {
+        return this.page.evaluate(() => window.listenForGenomeChanges())
+    }
+
+    /** The genome id of every genomechange event received since listenForGenomeChanges. */
+    genomeChangeEvents() {
+        return this.page.evaluate(() => window.genomeChangeEvents)
+    }
+
+    /** The genome label in the navbar, as the user sees it. */
+    genomeLabel() {
+        return this.page.locator("#igv-div .igv-current-genome")
+    }
+
     /** How many browsers igv.js keeps in its list of browsers. */
     browserCount() {
         return this.page.evaluate(() => window.browserCount())
