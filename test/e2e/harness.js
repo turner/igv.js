@@ -84,11 +84,6 @@ class IGVPage {
         return this.page.evaluate(locus => window.search(locus), locus)
     }
 
-    /** The locus displayed, as browser.currentLoci() gives it: a string, or an array in multi-locus view. */
-    currentLoci() {
-        return this.page.evaluate(() => window.currentLoci())
-    }
-
     /** The id of the browser's current genome. */
     genomeId() {
         return this.page.evaluate(() => window.genomeId())
@@ -132,11 +127,6 @@ class IGVPage {
     /** Regions of interest as the user sees them, in the first locus column. */
     roiRegions() {
         return this.page.locator("#igv-div .igv-column").first().locator(".igv-roi-region")
-    }
-
-    /** The genome definition object passed to createBrowser, read back after the load. */
-    genomeDefinition() {
-        return this.page.evaluate(() => window.genomeDefinition())
     }
 
     /** Subscribe to loadfailures on the existing browser, as an embedder would after createBrowser. */

@@ -1,7 +1,6 @@
 import {test, expect, DATA, TINY_GENOME} from "./harness.js"
 
-// A genome whose sequence source fails with no chrom sizes to fall back on: loading it rejects. Its files are
-// deliberately absent, and blocked besides.
+// A genome whose sequence source fails: loading it rejects. Its files are deliberately absent, and blocked besides.
 const BROKEN_GENOME = {
     id: "tiny-broken",
     name: "Broken genome",
@@ -68,4 +67,32 @@ test("a rejected createBrowser leaves no browser in the page and none in the bro
     expect(result.resolved).toBe(false)
     await expect(igvPage.containerContents()).toHaveCount(0)
     expect(await igvPage.browserCount()).toEqual(0)
+})
+
+// TINY_GENOME's sequence source: the FASTA and its index. Its chrom sizes stay reachable, but never stand in for the
+// sequence (ADR 0002).
+const TINY_SEQUENCE = "**/tiny.fa*"
+
+test("with the sequence blocked and the chrom sizes reachable, createBrowser rejects and leaves no browser", async ({igvPage}) => {
+
+    await igvPage.blockRequests(TINY_SEQUENCE)
+
+    const result = await igvPage.createBrowser({genome: TINY_GENOME})
+
+    expect(result.resolved).toBe(false)
+    await expect(igvPage.containerContents()).toHaveCount(0)
+    expect(await igvPage.browserCount()).toEqual(0)
+})
+
+test("a genome switch whose sequence fails, with the chrom sizes reachable, leaves the previous genome", async ({igvPage}) => {
+
+    await openWithWork(igvPage)
+    await igvPage.blockRequests(TINY_SEQUENCE)
+
+    const result = await igvPage.loadGenome({...TINY_GENOME, id: "tiny-2"})
+
+    expect(result.resolved).toBe(false)
+    expect(await igvPage.genomeId()).toEqual(TINY_GENOME.id)
+    await expect(igvPage.trackLabels()).toHaveText([TINY_GENOME.tracks[0].name, SESSION_TRACK.name])
+    await expect(igvPage.roiRegions()).toHaveCount(1)
 })

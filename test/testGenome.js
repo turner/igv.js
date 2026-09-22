@@ -48,29 +48,24 @@ suite("testGenome", function () {
 
     })
 
-    suite("sequence fallback", function () {
+    suite("sequence source", function () {
 
         const DATA = "test/e2e/data"
-        const tiny = {
-            id: "tiny",
-            fastaURL: `${DATA}/tiny.fa`,
-            indexURL: `${DATA}/tiny.fa.fai`,
-            chromSizesURL: `${DATA}/tiny.chrom.sizes`
-        }
 
-        test("a genome whose sequence loads is not a sequence fallback", async function () {
-            const genome = await Genome.createGenome({...tiny})
-            assert.isUndefined(genome.sequenceFallback)
-        })
-
-        test("a chrom-sizes-only definition is not a sequence fallback", async function () {
-            const genome = await Genome.createGenome({id: "tiny-sizes", format: "chromsizes", fastaURL: tiny.chromSizesURL})
-            assert.isUndefined(genome.sequenceFallback)
-        })
-
-        test("a failed sequence falls back to chrom sizes and is recorded", async function () {
-            const genome = await Genome.createGenome({...tiny, fastaURL: `${DATA}/missing.fa`, indexURL: `${DATA}/missing.fa.fai`})
-            assert.isDefined(genome.sequenceFallback)
+        test("a failed sequence source rejects the genome, even with chromSizesURL", async function () {
+            const config = {
+                id: "tiny",
+                fastaURL: `${DATA}/missing.fa`,
+                indexURL: `${DATA}/missing.fa.fai`,
+                chromSizesURL: `${DATA}/tiny.chrom.sizes`
+            }
+            let error
+            try {
+                await Genome.createGenome(config)
+            } catch (e) {
+                error = e
+            }
+            assert.isDefined(error)
         })
     })
 

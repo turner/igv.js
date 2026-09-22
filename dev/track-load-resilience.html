@@ -96,9 +96,7 @@
 
     const healthyGenome = genome()
     const genomeTrackFails = genome({id: "tiny-bad-tracks", name: "Tiny, genome track 404", tracks: [goodTrack, notFoundTrack]})
-    const sequenceFallbackGenome = genome({id: "tiny-fallback", name: "Tiny, sequence 404 → chrom sizes", fastaURL: `${MISSING}.fa`, indexURL: `${MISSING}.fa.fai`})
-    const sequenceFailsNoFallback = genome({id: "tiny-dead", name: "Tiny, sequence 404, no chrom sizes", fastaURL: `${MISSING}.fa`, indexURL: `${MISSING}.fa.fai`, chromSizesURL: undefined})
-    const everythingFails = genome({id: "tiny-worst", name: "Tiny, sequence fallback + genome track 404", fastaURL: `${MISSING}.fa`, indexURL: `${MISSING}.fa.fai`, tracks: [goodTrack, notFoundTrack]})
+    const sequenceFails = genome({id: "tiny-dead", name: "Tiny, sequence 404", fastaURL: `${MISSING}.fa`, indexURL: `${MISSING}.fa.fai`})
     const chromSizesOnlyGenome = {id: "tiny-sizes", name: "Tiny chrom sizes only", format: "chromsizes", fastaURL: `${DATA}/tiny.chrom.sizes`}
 
     // An otherwise healthy session: several good data tracks and one whose URL has gone stale
@@ -114,9 +112,7 @@
     const createScenarios = [
         ["Healthy genome", "Baseline: no failures, no event", {genome: healthyGenome}],
         ["Genome track fails", "Browser comes up; one event, one alert", {genome: genomeTrackFails}],
-        ["Sequence fails → chrom sizes", "Sequence-less genome; kind: sequence", {genome: sequenceFallbackGenome}],
-        ["Sequence falls back + genome track 404", "Browser comes up, no bases; both failures in one event", {genome: everythingFails}],
-        ["Sequence fails, no chrom sizes", "The only fatal case: createBrowser rejects, nothing appears", {genome: sequenceFailsNoFallback}],
+        ["Sequence fails", "The only fatal case: createBrowser rejects, nothing appears, even with chrom sizes", {genome: sequenceFails}],
         ["Chrom-sizes-only genome", "No sequence by design; no event", {genome: chromSizesOnlyGenome}],
         ["Healthy session, one stale track", "Browser comes up with tracks A, B, C; the 404 is reported", {genome: healthyGenome, tracks: oneStaleTrack}],
         ["Session with failing tracks", "404, network, unparseable, hidden", {genome: healthyGenome, tracks: mixedTracks}]
@@ -125,8 +121,7 @@
     const browserScenarios = [
         ["loadSession: failing tracks", "Tolerant: good tracks load, one event", b => b.loadSession({reference: healthyGenome, tracks: mixedTracks})],
         ["loadGenome: genome track fails", "Tolerant: switches genome, one event", b => b.loadGenome(genomeTrackFails)],
-        ["loadGenome: sequence fallback", "Switches to a sequence-less genome", b => b.loadGenome(sequenceFallbackGenome)],
-        ["loadGenome: unloadable genome", "Rejects; current genome and tracks kept", b => b.loadGenome(sequenceFailsNoFallback)],
+        ["loadGenome: unloadable genome", "Rejects; current genome and tracks kept", b => b.loadGenome(sequenceFails)],
         ["loadGenome: healthy", "Back to the tiny genome with bases", b => b.loadGenome(healthyGenome)],
         ["loadTrackList: good + 404", "Strict: rejects, no event; good track still added", b => b.loadTrackList([{...goodTrack, name: "Genes (again)"}, notFoundTrack])],
         ["loadTrack: 404", "Strict: rejects, no event", b => b.loadTrack(notFoundTrack)]
@@ -164,10 +159,8 @@
             statusDiv.textContent = `No browser. Elements left in the container: ${igvDiv.children.length}`
             return
         }
-        const g = browser.genome
-        const fallback = g.sequenceFallback ? ` (fell back from ${g.sequenceFallback.url})` : ""
         const tracks = browser.trackViews.map(tv => tv.track.name).filter(Boolean)
-        statusDiv.textContent = `Genome: ${g.id}  sequenceFallback: ${g.sequenceFallback ? "yes" : "no"}${fallback}  |  Tracks: ${tracks.join(", ") || "none"}`
+        statusDiv.textContent = `Genome: ${browser.genome.id}  |  Tracks: ${tracks.join(", ") || "none"}`
     }
 
     function describeError(error) {
@@ -180,10 +173,8 @@
     // The state a host can read back from the browser after a call
     function hostState() {
         if (!browser) return null
-        const {id, sequenceFallback} = browser.genome
         return {
-            genome: id,
-            sequenceFallback: sequenceFallback ? {url: sequenceFallback.url, error: describeError(sequenceFallback.error)} : null,
+            genome: browser.genome.id,
             tracks: browser.trackViews.map(tv => tv.track.name).filter(Boolean)
         }
     }
