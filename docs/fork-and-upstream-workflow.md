@@ -176,9 +176,58 @@ git checkout -B propose/load-resilience load-resilience
 git rebase --onto upstream/master base/load-resilience propose/load-resilience
 ```
 
-That replays only the commits after `base/load-resilience` — your feature work —
-onto current `upstream/master`. The scaffolding commits are not in that range, so
-they are simply absent. Conflicts here are unlikely: the scaffolding touches
+What each command does:
+
+1. **`git fetch upstream`** — downloads the latest commits from igvteam's
+   repository and updates your local copy of `upstream/master`. It changes
+   none of your own branches. It runs first so the proposal sits on top of
+   what upstream has *now*, not on a stale snapshot.
+
+2. **`git checkout -B propose/load-resilience load-resilience`** — creates a
+   branch named `propose/load-resilience` pointing at the same commit as
+   `load-resilience`, and switches to it. The capital `-B` means "create it,
+   or if it already exists, reset it to this point" — so every run starts
+   fresh from the current feature branch, throwing away any earlier generated
+   proposal. At this moment the new branch is an exact copy of
+   `load-resilience`, scaffolding and all; the next command removes the
+   scaffolding.
+
+3. **`git rebase --onto upstream/master base/load-resilience propose/load-resilience`**
+   — the step that does the real work. Read its three arguments as
+   "take the commits on `propose/load-resilience` that come *after*
+   `base/load-resilience`, and replay them on top of `upstream/master`":
+
+   - `propose/load-resilience` (last argument) — the branch being rewritten.
+   - `base/load-resilience` (middle argument) — the cut-off. Commits at or
+     before this marker are left behind. That is everything `load-resilience`
+     inherited from `master`: the upstream code *and* the scaffolding commits.
+   - `upstream/master` (`--onto`) — the new foundation the kept commits are
+     stacked on.
+
+   Git copies each feature commit, one at a time, onto `upstream/master`, then
+   moves `propose/load-resilience` to point at the last copy. The originals
+   on `load-resilience` are untouched.
+
+   Before and after:
+
+   ```
+   before:
+         U1 ─ U2 ─ U3                            ← upstream/master (just fetched)
+          \
+           S1 ─ S2 ─ F1 ─ F2 ─ F3                ← propose/load-resilience
+                 ↑
+         base/load-resilience
+
+   after:
+         U1 ─ U2 ─ U3 ─ F1' ─ F2' ─ F3'          ← propose/load-resilience
+   ```
+
+   (`U` = upstream commits, `S` = scaffolding commits on `master`, `F` =
+   feature commits, `F'` = their replayed copies.)
+
+The result: only your feature work, sitting on current `upstream/master`. The
+scaffolding commits were never in the replayed range, so they are simply
+absent. Conflicts here are unlikely: the scaffolding touches
 `docs/` and the feature touches `js/` and `test/`. Any conflicts you do see come
 from upstream having moved, which is the normal cost of proposing against a
 moving target.
