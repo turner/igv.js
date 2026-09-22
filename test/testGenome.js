@@ -48,7 +48,7 @@ suite("testGenome", function () {
 
     })
 
-    suite("bases", function () {
+    suite("sequence fallback", function () {
 
         const DATA = "test/e2e/data"
         const tiny = {
@@ -58,21 +58,18 @@ suite("testGenome", function () {
             chromSizesURL: `${DATA}/tiny.chrom.sizes`
         }
 
-        test("a genome whose sequence loads has bases", async function () {
+        test("a genome whose sequence loads is not a sequence fallback", async function () {
             const genome = await Genome.createGenome({...tiny})
-            assert.isTrue(genome.hasBases)
             assert.isUndefined(genome.sequenceFallback)
         })
 
-        test("a chrom-sizes-only definition has no bases and is not a sequence fallback", async function () {
+        test("a chrom-sizes-only definition is not a sequence fallback", async function () {
             const genome = await Genome.createGenome({id: "tiny-sizes", format: "chromsizes", fastaURL: tiny.chromSizesURL})
-            assert.isFalse(genome.hasBases)
             assert.isUndefined(genome.sequenceFallback)
         })
 
-        test("a sequence fallback has no bases and is recorded as a fallback", async function () {
+        test("a failed sequence falls back to chrom sizes and is recorded", async function () {
             const genome = await Genome.createGenome({...tiny, fastaURL: `${DATA}/missing.fa`, indexURL: `${DATA}/missing.fa.fai`})
-            assert.isFalse(genome.hasBases)
             assert.isDefined(genome.sequenceFallback)
         })
     })

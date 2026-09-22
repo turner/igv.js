@@ -1,4 +1,6 @@
-import {test, expect, TINY_GENOME, CHROM_SIZES_GENOME} from "./harness.js"
+import {test, expect, TINY_GENOME} from "./harness.js"
+
+const DATA = "/test/e2e/data"
 
 // The FASTA and its index: the whole sequence source.
 const SEQUENCE = "**/tiny.fa*"
@@ -66,7 +68,9 @@ test("the sequence fallback leaves the genome definition unchanged", async ({igv
 
 test("a chrom-sizes-only definition loads normally and is not a sequence fallback", async ({igvPage}) => {
 
-    const result = await igvPage.createBrowser({genome: CHROM_SIZES_GENOME}, {listen: true})
+    const result = await igvPage.createBrowser({
+        genome: {id: "tiny-sizes", name: "Tiny chrom sizes", format: "chromsizes", fastaURL: `${DATA}/tiny.chrom.sizes`}
+    }, {listen: true})
 
     expect(result).toEqual({resolved: true})
     expect(await igvPage.search("chr2:101-200")).toEqual({resolved: true})

@@ -10,8 +10,7 @@ export default defineConfig({
     retries: process.env.CI ? 1 : 0,
     reporter: process.env.CI ? "github" : "list",
     use: {
-        // localhost rather than 127.0.0.1: igv.js offers its clipboard menu items only on https or localhost
-        baseURL: `http://localhost:${port}`,
+        baseURL: `http://127.0.0.1:${port}`,
         trace: "retain-on-failure"
     },
     projects: [
@@ -19,7 +18,7 @@ export default defineConfig({
     ],
     webServer: {
         command: `node test/e2e/server.js ${port}`,
-        url: `http://localhost:${port}/test/e2e/harness.html`,
+        url: `http://127.0.0.1:${port}/test/e2e/harness.html`,
         reuseExistingServer: !process.env.CI
     }
 })

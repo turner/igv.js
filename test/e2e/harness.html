@@ -57,13 +57,6 @@
 
     window.loadGenome = genome => settle(() => window.browser.loadGenome(genome))
 
-    // The center of the first data panel of the first track of `type`, in page coordinates, for a real mouse click
-    window.trackViewportCenter = type => {
-        const trackView = window.browser.trackViews.find(trackView => trackView.track.type === type)
-        const {x, y, width, height} = trackView.viewports[0].viewportElement.getBoundingClientRect()
-        return {x: x + width / 2, y: y + height / 2}
-    }
-
     window.harnessReady = true
 
 </script>

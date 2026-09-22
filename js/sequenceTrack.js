@@ -91,7 +91,7 @@ class SequenceTrack {
 
     contextMenuItemList(clickState) {
         const viewport = clickState.viewport
-        if (this.browser.genome.hasBases && viewport.referenceFrame.bpPerPixel <= 1) {
+        if (viewport.referenceFrame.bpPerPixel <= 1) {
             const pixelWidth = viewport.getWidth()
             const bpWindow = pixelWidth * viewport.referenceFrame.bpPerPixel
             const chr = viewport.referenceFrame.chr

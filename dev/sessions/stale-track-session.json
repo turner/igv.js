@@ -1,0 +1,33 @@
+{
+  "genome": "hg19",
+  "locus": "chr22:36,640,000-36,720,000",
+  "tracks": [
+    {
+      "name": "APOL1 SNPs (good)",
+      "type": "annotation",
+      "format": "bed",
+      "url": "https://raw.githubusercontent.com/igvteam/igv-data/refs/heads/main/data/tutorials/vcf/apol1_snp131.bed",
+      "color": "rgb(0,120,0)"
+    },
+    {
+      "name": "Some features (good)",
+      "type": "annotation",
+      "format": "bed",
+      "url": "https://raw.githubusercontent.com/igvteam/igv-data/refs/heads/main/data/test/roi/some_features.bed",
+      "color": "rgb(180,0,0)"
+    },
+    {
+      "name": "Stale track (404)",
+      "type": "annotation",
+      "format": "bed",
+      "url": "https://raw.githubusercontent.com/igvteam/igv-data/refs/heads/main/data/tutorials/vcf/DOES_NOT_EXIST.bed"
+    },
+    {
+      "name": "ROI BED 1 (good)",
+      "type": "annotation",
+      "format": "bed",
+      "url": "https://raw.githubusercontent.com/igvteam/igv-data/refs/heads/main/data/test/roi/roi_bed_1.bed",
+      "color": "rgb(120,0,160)"
+    }
+  ]
+}

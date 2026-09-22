@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Track load resilience</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 16px; }
+        h1 { font-size: 20px; margin: 0 0 4px; }
+        p.intro { margin: 0 0 12px; color: #555; max-width: 900px; }
+        .controls { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 12px; }
+        fieldset { border: 1px solid #ccc; border-radius: 4px; padding: 8px 12px; }
+        legend { font-weight: 600; font-size: 13px; }
+        fieldset button { display: block; width: 100%; text-align: left; margin: 4px 0; padding: 4px 8px; cursor: pointer; }
+        #removeBrowser, #clearLog { display: block; width: 100%; margin: 4px 0 8px; padding: 4px 8px; cursor: pointer; }
+        fieldset button small { display: block; color: #666; }
+        #status { font-family: monospace; font-size: 12px; margin-bottom: 8px; }
+        #log { font-family: monospace; font-size: 12px; background: #f6f6f6; border: 1px solid #ddd; height: 180px;
+            overflow-y: auto; padding: 6px; white-space: pre-wrap; margin-bottom: 12px; }
+        #log .ok { color: #1a7f37; }
+        #log .fail { color: #b3261e; }
+        #log .event { color: #6a3fb5; }
+        #igvDiv { min-height: 100px; border: 1px dashed #bbb; }
+        .panes { display: flex; gap: 12px; margin-bottom: 12px; }
+        .panes > div { flex: 1; min-width: 0; }
+        .panes h2 { font-size: 13px; margin: 0 0 4px; }
+        .panes #log { margin-bottom: 0; }
+        #hostView { font-family: monospace; font-size: 12px; background: #f6f6f6; border: 1px solid #ddd; height: 180px;
+            overflow-y: auto; padding: 6px; }
+        #hostView pre { margin: 0 0 10px; white-space: pre-wrap; }
+    </style>
+</head>
+
+<body>
+
+<h1>Track load resilience</h1>
+<p class="intro">
+    Exercises the load-resilience work (docs/specs/load-resilience.md). Every resource is a local file from
+    <code>test/e2e/data/</code>, so failures are deterministic. Each <code>loadfailures</code> event and each API
+    call's outcome is logged below. The right-hand pane shows, per call, everything a host application
+    receives: whether the promise resolved or rejected (and the error), the raw <code>loadfailures</code> payload if
+    the event fired, and the browser state it can query afterwards. The page starts with no browser; pick a <code>createBrowser</code> scenario,
+    or <em>Remove browser</em> to start over.
+</p>
+
+<div class="controls">
+    <fieldset id="createScenarios">
+        <legend>igv.createBrowser (replaces the current browser)</legend>
+    </fieldset>
+    <fieldset id="browserScenarios">
+        <legend>On the current browser</legend>
+    </fieldset>
+    <fieldset>
+        <legend>Options</legend>
+        <button id="removeBrowser">Remove browser</button>
+        <button id="clearLog">Clear log</button>
+        <label><input type="checkbox" id="showAlert" checked> showLoadFailureAlert</label>
+    </fieldset>
+</div>
+
+<div id="status"></div>
+<div class="panes">
+    <div>
+        <h2>Log</h2>
+        <div id="log"></div>
+    </div>
+    <div>
+        <h2>What the host application receives (latest call first)</h2>
+        <div id="hostView"></div>
+    </div>
+</div>
+<div id="igvDiv"></div>
+
+<script type="module">
+
+    import igv from "../js/index.js"
+
+    const DATA = "../test/e2e/data"
+    const MISSING = `${DATA}/does-not-exist`
+
+    // Track configurations, one per way a track can fail
+    const goodTrack = {name: "Genes (good)", type: "annotation", format: "bed", url: `${DATA}/tiny.genes.bed`}
+    const notFoundTrack = {name: "404 track", type: "annotation", format: "bed", url: `${MISSING}.bed`}
+    const networkErrorTrack = {name: "Unreachable host", type: "annotation", format: "bed", url: "https://nonexistent.invalid/genes.bed"}
+    const unparseableTrack = {name: "BED posing as bigwig", type: "wig", format: "bigwig", url: `${DATA}/tiny.genes.bed`}
+    const hiddenFailingTrack = {name: "Hidden 404 (search index)", type: "annotation", format: "bed", url: `${MISSING}.hidden.bed`, hidden: true}
+
+    const genome = overrides => ({
+        id: "tiny",
+        name: "Tiny test genome",
+        fastaURL: `${DATA}/tiny.fa`,
+        indexURL: `${DATA}/tiny.fa.fai`,
+        chromSizesURL: `${DATA}/tiny.chrom.sizes`,
+        tracks: [goodTrack],
+        ...overrides
+    })
+
+    const healthyGenome = genome()
+    const genomeTrackFails = genome({id: "tiny-bad-tracks", name: "Tiny, genome track 404", tracks: [goodTrack, notFoundTrack]})
+    const sequenceFallbackGenome = genome({id: "tiny-fallback", name: "Tiny, sequence 404 → chrom sizes", fastaURL: `${MISSING}.fa`, indexURL: `${MISSING}.fa.fai`})
+    const sequenceFailsNoFallback = genome({id: "tiny-dead", name: "Tiny, sequence 404, no chrom sizes", fastaURL: `${MISSING}.fa`, indexURL: `${MISSING}.fa.fai`, chromSizesURL: undefined})
+    const everythingFails = genome({id: "tiny-worst", name: "Tiny, sequence fallback + genome track 404", fastaURL: `${MISSING}.fa`, indexURL: `${MISSING}.fa.fai`, tracks: [goodTrack, notFoundTrack]})
+    const chromSizesOnlyGenome = {id: "tiny-sizes", name: "Tiny chrom sizes only", format: "chromsizes", fastaURL: `${DATA}/tiny.chrom.sizes`}
+
+    // An otherwise healthy session: several good data tracks and one whose URL has gone stale
+    const oneStaleTrack = [
+        {...goodTrack, name: "Data track A", color: "rgb(0,120,0)"},
+        {...goodTrack, name: "Data track B", color: "rgb(180,0,0)"},
+        {name: "Stale track (404)", type: "annotation", format: "bed", url: `${MISSING}.stale.bed`},
+        {...goodTrack, name: "Data track C", color: "rgb(120,0,160)"}
+    ]
+
+    const mixedTracks = [goodTrack, notFoundTrack, networkErrorTrack, unparseableTrack, hiddenFailingTrack]
+
+    const createScenarios = [
+        ["Healthy genome", "Baseline: no failures, no event", {genome: healthyGenome}],
+        ["Genome track fails", "Browser comes up; one event, one alert", {genome: genomeTrackFails}],
+        ["Sequence fails → chrom sizes", "Sequence-less genome; kind: sequence", {genome: sequenceFallbackGenome}],
+        ["Sequence falls back + genome track 404", "Browser comes up, no bases; both failures in one event", {genome: everythingFails}],
+        ["Sequence fails, no chrom sizes", "The only fatal case: createBrowser rejects, nothing appears", {genome: sequenceFailsNoFallback}],
+        ["Chrom-sizes-only genome", "No sequence by design; no event", {genome: chromSizesOnlyGenome}],
+        ["Healthy session, one stale track", "Browser comes up with tracks A, B, C; the 404 is reported", {genome: healthyGenome, tracks: oneStaleTrack}],
+        ["Session with failing tracks", "404, network, unparseable, hidden", {genome: healthyGenome, tracks: mixedTracks}]
+    ]
+
+    const browserScenarios = [
+        ["loadSession: failing tracks", "Tolerant: good tracks load, one event", b => b.loadSession({reference: healthyGenome, tracks: mixedTracks})],
+        ["loadGenome: genome track fails", "Tolerant: switches genome, one event", b => b.loadGenome(genomeTrackFails)],
+        ["loadGenome: sequence fallback", "Switches to a sequence-less genome", b => b.loadGenome(sequenceFallbackGenome)],
+        ["loadGenome: unloadable genome", "Rejects; current genome and tracks kept", b => b.loadGenome(sequenceFailsNoFallback)],
+        ["loadGenome: healthy", "Back to the tiny genome with bases", b => b.loadGenome(healthyGenome)],
+        ["loadTrackList: good + 404", "Strict: rejects, no event; good track still added", b => b.loadTrackList([{...goodTrack, name: "Genes (again)"}, notFoundTrack])],
+        ["loadTrack: 404", "Strict: rejects, no event", b => b.loadTrack(notFoundTrack)]
+    ]
+
+    const igvDiv = document.getElementById("igvDiv")
+    const logDiv = document.getElementById("log")
+    const statusDiv = document.getElementById("status")
+    const showAlert = document.getElementById("showAlert")
+    const hostView = document.getElementById("hostView")
+
+    let browser
+
+    // loadfailures payloads received during the current call, reported with its outcome
+    let receivedPayloads = []
+
+    function log(text, className) {
+        const line = document.createElement("div")
+        line.textContent = `${new Date().toLocaleTimeString()}  ${text}`
+        if (className) line.className = className
+        logDiv.appendChild(line)
+        logDiv.scrollTop = logDiv.scrollHeight
+    }
+
+    function onLoadFailures(failures) {
+        receivedPayloads.push(failures)
+        log(`loadfailures event (${failures.length}):`, "event")
+        for (const {kind, url, message} of failures) {
+            log(`    [${kind}] ${url} — ${message}`, "event")
+        }
+    }
+
+    function updateStatus() {
+        if (!browser) {
+            statusDiv.textContent = `No browser. Elements left in the container: ${igvDiv.children.length}`
+            return
+        }
+        const g = browser.genome
+        const fallback = g.sequenceFallback ? ` (fell back from ${g.sequenceFallback.url})` : ""
+        const tracks = browser.trackViews.map(tv => tv.track.name).filter(Boolean)
+        statusDiv.textContent = `Genome: ${g.id}  sequenceFallback: ${g.sequenceFallback ? "yes" : "no"}${fallback}  |  Tracks: ${tracks.join(", ") || "none"}`
+    }
+
+    function describeError(error) {
+        if (!(error instanceof Error)) return String(error)
+        const description = {name: error.name, message: error.message}
+        if (error.cause !== undefined) description.cause = describeError(error.cause)
+        return description
+    }
+
+    // The state a host can read back from the browser after a call
+    function hostState() {
+        if (!browser) return null
+        const {id, sequenceFallback} = browser.genome
+        return {
+            genome: id,
+            sequenceFallback: sequenceFallback ? {url: sequenceFallback.url, error: describeError(sequenceFallback.error)} : null,
+            tracks: browser.trackViews.map(tv => tv.track.name).filter(Boolean)
+        }
+    }
+
+    function showHostRecord(label, record) {
+        const pre = document.createElement("pre")
+        pre.textContent = `// ${new Date().toLocaleTimeString()}  ${label}\n${JSON.stringify(record, null, 2)}`
+        hostView.prepend(pre)
+        hostView.scrollTop = 0
+    }
+
+    async function run(label, call) {
+        log(`▶ ${label}`)
+        receivedPayloads = []
+        const record = {}
+        try {
+            await call()
+            record.promise = "resolved"
+            log(`✔ ${label}: resolved`, "ok")
+        } catch (error) {
+            console.error(error)
+            record.promise = "rejected"
+            record.error = describeError(error)
+            log(`✘ ${label}: rejected — ${error.message || error}`, "fail")
+        }
+        record.loadfailures = receivedPayloads.length === 0 ? "(event not fired)" :
+            receivedPayloads.length === 1 ? receivedPayloads[0] : receivedPayloads
+        record.stateAfter = hostState() ?? "(no browser)"
+        showHostRecord(label, record)
+        updateStatus()
+    }
+
+    // Remove every browser igv knows of, and anything left in the container, so each scenario starts clean
+    function removeBrowser() {
+        igv.removeAllBrowsers()
+        igvDiv.replaceChildren()
+        browser = undefined
+        updateStatus()
+    }
+
+    async function recreate(label, config) {
+        removeBrowser()
+        await run(`createBrowser — ${label}`, async () => {
+            browser = await igv.createBrowser(igvDiv, {
+                loadDefaultGenomes: false,
+                showLoadFailureAlert: showAlert.checked,
+                listeners: {loadfailures: onLoadFailures},
+                ...structuredClone(config)
+            })
+        })
+    }
+
+    function addButtons(fieldset, scenarios, handler) {
+        for (const [label, hint, arg] of scenarios) {
+            const button = document.createElement("button")
+            button.innerHTML = `${label}<small>${hint}</small>`
+            button.addEventListener("click", () => handler(label, arg))
+            fieldset.appendChild(button)
+        }
+    }
+
+    addButtons(document.getElementById("createScenarios"), createScenarios, (label, config) => recreate(label, config))
+
+    addButtons(document.getElementById("browserScenarios"), browserScenarios, (label, call) => {
+        if (!browser) {
+            log(`No browser — create one first`, "fail")
+            return
+        }
+        return run(label, () => call(browser))
+    })
+
+    showAlert.addEventListener("change", () => {
+        if (browser) browser.config.showLoadFailureAlert = showAlert.checked
+    })
+
+    document.getElementById("removeBrowser").addEventListener("click", () => {
+        removeBrowser()
+        log("Browser removed")
+    })
+
+    document.getElementById("clearLog").addEventListener("click", () => {
+        logDiv.replaceChildren()
+        hostView.replaceChildren()
+    })
+
+    updateStatus()
+
+</script>
+
+</body>
+</html>

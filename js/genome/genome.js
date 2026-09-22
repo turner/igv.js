@@ -6,7 +6,7 @@ import ChromAliasFile from "./chromAliasFile.js"
 import CytobandFileBB from "./cytobandFileBB.js"
 import CytobandFile from "./cytobandFile.js"
 
-import ChromSizes, {loadChromSizes} from "./chromSizes.js"
+import {loadChromSizes} from "./chromSizes.js"
 import ChromAliasDefaults from "./chromAliasDefaults.js"
 import {updateReference} from "./updateReference.js"
 import BWSource from "../bigwig/bwSource.js"
@@ -142,14 +142,6 @@ class Genome {
             this.sequenceFallback = {url: sequenceURL(config), error}
             return sequence
         }
-    }
-
-    /**
-     * False for a sequence-less genome, whose sequence source supplies chromosome sizes only.  That is either a
-     * sequence fallback (see sequenceFallback) or a genome definition that asked for chrom sizes only.
-     */
-    get hasBases() {
-        return !(this.sequence instanceof ChromSizes)
     }
 
     get description() {
