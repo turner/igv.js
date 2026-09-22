@@ -107,21 +107,11 @@ test("by default one alert names every URL that failed in the load", async ({igv
     await expect(igvPage.alert()).toContainText(`${MISSING}?session`)
 })
 
-test("registering a listener leaves the alert on", async ({igvPage}) => {
+test("a createBrowser loadfailures listener replaces the alert, for later loads too", async ({igvPage}) => {
 
     await igvPage.blockRequests(`**${MISSING}`)
 
     await igvPage.createBrowser({genome: GENOME_WITH_BROKEN_TRACK}, {listen: true})
-
-    expect(await igvPage.loadFailureEvents()).toHaveLength(1)
-    await expect(igvPage.alert()).toContainText(MISSING)
-})
-
-test("showLoadFailureAlert: false suppresses the alert, for later loads too, and the event still fires", async ({igvPage}) => {
-
-    await igvPage.blockRequests(`**${MISSING}`)
-
-    await igvPage.createBrowser({genome: GENOME_WITH_BROKEN_TRACK, showLoadFailureAlert: false}, {listen: true})
     await igvPage.loadGenome({...GENOME_WITH_BROKEN_TRACK, id: "tiny-broken"})
 
     expect(await igvPage.loadFailureEvents()).toHaveLength(2)
