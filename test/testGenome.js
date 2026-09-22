@@ -73,4 +73,18 @@ suite("testGenome", function () {
             assert.isDefined(genome.sequenceFallback)
         })
     })
+
+    suite("genome id", function () {
+
+        test("an explicit id wins over twoBitURL", function () {
+            const genome = new Genome({id: "foo", twoBitURL: "test/data/twobit/foo.2bit"})
+            assert.equal(genome.id, "foo")
+        })
+
+        test("a twoBitURL given as a File uses its name", function () {
+            const twoBitURL = new File(new ArrayBuffer(0), "foo.2bit")
+            const genome = new Genome({twoBitURL})
+            assert.equal(genome.id, "foo.2bit")
+        })
+    })
 })
