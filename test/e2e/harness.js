@@ -30,9 +30,15 @@ class IGVPage {
         this.page = page
         this.origin = new URL(baseURL).origin
         this.offsiteRequests = []
+        this.pageErrors = []        // uncaught exceptions and unhandled rejections
+        this.consoleErrors = []     // text of every console.error
     }
 
     async open() {
+        this.page.on("pageerror", error => this.pageErrors.push(error.message))
+        this.page.on("console", message => {
+            if (message.type() === "error") this.consoleErrors.push(message.text())
+        })
         await this.page.route(url => url.origin !== this.origin, route => {
             this.offsiteRequests.push(route.request().url())
             return route.abort("internetdisconnected")
@@ -82,6 +88,11 @@ class IGVPage {
     /** Call browser.search in the page. Resolves like createBrowser. */
     search(locus) {
         return this.page.evaluate(locus => window.search(locus), locus)
+    }
+
+    /** The current locus string, or an array of them in multi-locus view (browser.currentLoci). */
+    currentLoci() {
+        return this.page.evaluate(() => window.currentLoci())
     }
 
     /** The id of the browser's current genome. */
@@ -142,6 +153,24 @@ class IGVPage {
     /** The browser's alert dialog (viewports hold alert dialogs of their own). */
     alert() {
         return this.page.locator("#igv-div .igv-container > .igv-ui-alert-dialog-container")
+    }
+
+    /** The ideogram canvas of every locus column. */
+    ideograms() {
+        return this.page.locator("#igv-div .igv-ideogram-canvas")
+    }
+
+    /** Whether the first ideogram canvas has been painted: any pixel is not transparent. */
+    ideogramIsPainted() {
+        return this.ideograms().first().evaluate(canvas => {
+            const {data} = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height)
+            return data.some((value, i) => i % 4 === 3 && value > 0)
+        })
+    }
+
+    /** The console.error messages that mention `text`. */
+    consoleErrorsMentioning(text) {
+        return this.consoleErrors.filter(e => e.includes(text))
     }
 
     /** Track labels as the user sees them (Playwright locators pierce igv's open shadow root). */
