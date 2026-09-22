@@ -51,7 +51,7 @@ const EXPECTED_FAILURES = [
     {kind: "track", url: MISSING_TRACK, message: expect.any(String)}
 ]
 
-test("a failed optional part is reported with the track failures, in one event and one alert", async ({igvPage}) => {
+test("a failed optional part is reported with the track failures, in one event", async ({igvPage}) => {
 
     await igvPage.blockRequests(`**${MISSING_ALIAS_BB}`)
     await igvPage.blockRequests(`**${MISSING_TRACK}`)
@@ -59,6 +59,15 @@ test("a failed optional part is reported with the track failures, in one event a
     await igvPage.createBrowser({genome: GENOME_WITH_ALIAS_BB_AND_BROKEN_TRACK}, {listen: true})
 
     expect(await igvPage.loadFailureEvents()).toEqual([EXPECTED_FAILURES])
+})
+
+test("a failed optional part is listed with the track failures, in one alert", async ({igvPage}) => {
+
+    await igvPage.blockRequests(`**${MISSING_ALIAS_BB}`)
+    await igvPage.blockRequests(`**${MISSING_TRACK}`)
+
+    await igvPage.createBrowser({genome: GENOME_WITH_ALIAS_BB_AND_BROKEN_TRACK})
+
     await expect(igvPage.alert()).toContainText(MISSING_ALIAS_BB)
     await expect(igvPage.alert()).toContainText(MISSING_TRACK)
 })

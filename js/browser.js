@@ -936,8 +936,9 @@ class Browser {
 
         this.fireEvent('loadfailures', [loadFailures])
 
-        // One combined alert: the alert dialog is a single instance, so separate alerts would show only the last
-        if (false !== this.config.showLoadFailureAlert) {
+        // One combined alert, unless the embedder handles load failures with a createBrowser listener. One, because
+        // the alert dialog is a single instance, so separate alerts would show only the last
+        if (!this.config.listeners?.loadfailures) {
             const lines = loadFailures.map(({url, message}) => `${escapeHTML(url)}<br>${escapeHTML(message)}`)
             this.alert.present(`Some resources could not be loaded:<br><br>${lines.join('<br><br>')}`)
         }
