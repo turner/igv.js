@@ -7,13 +7,16 @@ testing plan.
 
 The decision itself is recorded in
 [ADR 0001](../adr/0001-genome-and-session-loads-survive-missing-parts.md).
+[ADR 0002](../adr/0002-the-minimal-genome-definition-is-the-contract.md) ([#17](https://github.com/turner/igv.js/issues/17)) supersedes its fallback to chrom sizes: a genome loads if and only if its
+sequence source loads, and every other part of a genome definition is an optional part.
+Parts superseded by it are struck through below.
 Vocabulary is in [`CONTEXT.md`](../../CONTEXT.md).
 
 ## User Stories
 
 1. As an IGV-Web user whose launch genome's RefSeq gene track is unreachable, I want the browser to open anyway, so that I can work with the genome's sequence and load my own tracks.
 2. As an IGV-Web user whose launch genome's RefSeq gene track is unreachable, I want every menu in the app to work, so that the app is not dead on arrival.
-3. As an IGV-Web user whose launch genome's sequence source is unreachable, I want the browser to open on that genome's chromosomes, so that I can navigate and see my own tracks in context.
+3. ~~As an IGV-Web user whose launch genome's sequence source is unreachable, I want the browser to open on that genome's chromosomes, so that I can navigate and see my own tracks in context.~~ _Superseded ([#17](https://github.com/turner/igv.js/issues/17), ADR 0002): a genome whose sequence source fails does not load, and `createBrowser` rejects._
 4. As an IGV-Web user whose launch genome fails in any way, I want one alert naming each URL that failed, so that I can tell my administrator exactly what to fix.
 5. As an IGV-Web user who has just seen such an alert, I want the genome selector to work, so that I can switch to a genome that loads completely and start work.
 6. As an IGV-Web user, I want a failed genome switch to leave my current genome and tracks in place, so that trying a genome that turns out to be broken costs me nothing.
@@ -32,11 +35,11 @@ Vocabulary is in [`CONTEXT.md`](../../CONTEXT.md).
 19. As an igv.js embedder calling `loadTrack` for a track my user asked for, I want it to reject when that track fails, so that my existing error handling keeps working.
 20. As an igv.js embedder calling `loadTrackList` with a set of tracks, I want it to reject when one fails, so that the public API's contract does not change under me.
 21. As an igv.js embedder, I want the tracks that did load through a rejecting `loadTrackList` call to be correctly ordered and sized, so that a partial failure does not leave the display corrupted.
-22. As an igv.js embedder whose genome has no sequence and no chrom sizes to fall back on, I want the load to reject cleanly, so that I can decide myself what to do.
+22. As an igv.js embedder whose genome's sequence source fails, I want the load to reject cleanly, so that I can decide myself what to do. _Amended ([#17](https://github.com/turner/igv.js/issues/17), ADR 0002): this used to read "has no sequence and no chrom sizes to fall back on"; chrom sizes never stand in for the sequence._
 23. As an igv.js embedder, I want a rejected `createBrowser` to leave nothing behind in my page, so that my retry or fallback does not accumulate orphaned browsers.
 24. ~~As an igv.js embedder, I want to ask a genome whether it has bases, so that I can adapt my own UI the way igv.js adapts its menus.~~ _Descoped (#7)._
-25. As an igv.js embedder, I want a genome deliberately defined with chrom sizes only to behave as a fully established session, so that a genome that loaded exactly as defined is not treated as a failure.
-26. As an igv.js embedder, I want the sequence fallback to leave the genome definition I passed in unchanged, so that a definition I reuse is not quietly rewritten.
+25. ~~As an igv.js embedder, I want a genome deliberately defined with chrom sizes only to behave as a fully established session, so that a genome that loaded exactly as defined is not treated as a failure.~~ _Superseded ([#17](https://github.com/turner/igv.js/issues/17), ADR 0002): a definition that supplies only chrom sizes is not a genome definition._
+26. ~~As an igv.js embedder, I want the sequence fallback to leave the genome definition I passed in unchanged, so that a definition I reuse is not quietly rewritten.~~ _Superseded ([#17](https://github.com/turner/igv.js/issues/17)): the sequence fallback is removed._
 27. As an IGV-Web user who opens a session saved from an established session, I want it to restore the full genome, so that a network problem from an earlier visit does not persist into this one.
 28. As an igv.js maintainer, I want a test that blocks a URL in a real browser, so that the behavior under the failure that actually occurs in the wild is covered rather than an approximation of it.
 29. As an igv.js maintainer, I want the tests to use local fixtures, so that the suite does not depend on igv.org or UCSC being up.
@@ -52,22 +55,22 @@ Vocabulary is defined in `CONTEXT.md` on this branch; the decision is recorded i
 - The public single-track and track-list entry points keep rejecting. The tolerant path is internal to session and genome loading. The BLAT track, which loads through the track-list entry point, keeps the rejecting behavior.
 - The rejecting path must still complete the ordering and resizing work for the tracks that did load. It currently skips that work when one track fails, which leaves added tracks misordered and wrongly sized — a latent bug on the same code path.
 
-**Sequence fallback**
+**~~Sequence fallback~~** — _Removed in [#17](https://github.com/turner/igv.js/issues/17) ([ADR 0002](../adr/0002-the-minimal-genome-definition-is-the-contract.md)). A genome loads if and only if its sequence source loads; if it fails, the load rejects, even when the genome definition has a chrom sizes URL. Chrom sizes are an optional part and never stand in for the sequence._
 
-- When the sequence source fails while the genome is built, and the genome definition has a chrom sizes URL, igv.js reports the failure and builds a sequence-less genome from chrom sizes instead.
-- The fallback must not mutate the genome definition it was given, so that a caller reusing the definition, and any session saved later, still names the original genome.
-- If the sequence fails and no chrom sizes are available, the load rejects, as it does today.
-- Note for whoever implements this: igv.js rewrites igv.org sequence URLs to UCSC ones, and supplies the chrom sizes URL for the well-known genomes from UCSC as well. For hg38 both therefore come from the same host, so the fallback helps when a single file fails, not when that host is unreachable. That is accepted.
+- ~~When the sequence source fails while the genome is built, and the genome definition has a chrom sizes URL, igv.js reports the failure and builds a sequence-less genome from chrom sizes instead.~~
+- ~~The fallback must not mutate the genome definition it was given, so that a caller reusing the definition, and any session saved later, still names the original genome.~~
+- ~~If the sequence fails and no chrom sizes are available, the load rejects, as it does today.~~
+- ~~Note for whoever implements this: igv.js rewrites igv.org sequence URLs to UCSC ones, and supplies the chrom sizes URL for the well-known genomes from UCSC as well. For hg38 both therefore come from the same host, so the fallback helps when a single file fails, not when that host is unreachable. That is accepted.~~ _ADR 0002 gives this as one reason to remove the fallback._
 
-**A genome that has no bases** — _Hiding menu items and `hasBases` descoped in [#7](https://github.com/turner/igv.js/issues/7). A sequence fallback is still recorded in `genome.sequenceFallback`._
+**A genome that has no bases** — _Hiding menu items and `hasBases` descoped in [#7](https://github.com/turner/igv.js/issues/7). Superseded by [#17](https://github.com/turner/igv.js/issues/17): with the fallback to chrom sizes removed, every genome has its sequence source, and `genome.sequenceFallback` is gone._
 
-- ~~A genome exposes whether it has bases.~~ _Descoped (#7)._ The sequence-less state must distinguish its two causes: a sequence fallback, versus a genome definition that asked for chrom sizes only. ~~Hiding menu items applies to both.~~ _Descoped (#7)._ ~~Refusing to save applies only to the fallback.~~ _Descoped (#8)._
-- ~~The menu items that need bases are hidden while the genome has none: view, copy and BLAT of the visible sequence, and view and copy of a feature's sequence.~~ _Descoped (#7): they are present and inert, as they already were for a chrom-sizes-only genome._
-- Everything already tolerates the absence of bases and is left alone: alignment rendering skips mismatch coloring and logs, and existing null-handling paths remain as a backstop.
+- ~~A genome exposes whether it has bases.~~ _Descoped (#7)._ ~~The sequence-less state must distinguish its two causes: a sequence fallback, versus a genome definition that asked for chrom sizes only.~~ _Superseded (#17): neither cause exists any more._ ~~Hiding menu items applies to both.~~ _Descoped (#7)._ ~~Refusing to save applies only to the fallback.~~ _Descoped (#8)._
+- ~~The menu items that need bases are hidden while the genome has none: view, copy and BLAT of the visible sequence, and view and copy of a feature's sequence.~~ _Descoped (#7): they are present and inert._
+- ~~Everything already tolerates the absence of bases and is left alone: alignment rendering skips mismatch coloring and logs, and existing null-handling paths remain as a backstop.~~ _Moot after [#17](https://github.com/turner/igv.js/issues/17)._
 
 **Reporting**
 
-- One event per load, `loadfailures`, whose argument is an array of one entry per failure: the kind (`track` or `sequence`), the URL, and the message. `sequence` means the fallback was used.
+- One event per load, `loadfailures`, whose argument is an array of one entry per failure: the kind (`track`, ~~or `sequence`~~ `chromSizes` or `chromAlias`), the URL, and the message. ~~`sequence` means the fallback was used.~~ _Changed in [#17](https://github.com/turner/igv.js/issues/17): the `sequence` kind went with the fallback, and the two optional-part kinds were added._
 - Registration in two places, one mechanism: the existing event subscription for later loads, and a `createBrowser` configuration option that is registered as a listener before anything loads. The latter exists because the embedder has no browser to subscribe to during the first load.
 - By default igv.js also presents one combined alert listing every failure in that load. ~~`showLoadFailureAlert: false` turns it off. Registering a listener does not turn it off.~~ _Replaced: igv.js gains no config field. A `loadfailures` handler in `createBrowser`'s existing `listeners` option turns the alert off, for that load and later ones._
 - One combined alert, not one per failure: the alert dialog is a single instance whose body is replaced by each call, so separate alerts would show only the last failure.
@@ -99,16 +102,16 @@ A good test here asserts what a user or an embedder can observe: a browser exist
 
 - The test loads a page that calls `igv.createBrowser` in real Chromium, blocks specific URLs by pattern, and asserts on the result. This is the highest seam available and matches how the failure occurs in the wild. It was the technique used to diagnose #355 in the first place.
 - Fixtures are local and served from the repo, so the suite needs no network. `test/data/genomes/hg38.chrom.sizes` already exists; a small custom genome definition pointing at local sequence and track files, with one of them blocked, gives a deterministic case for each scenario.
-- Cases: sequence blocked; a genome track blocked; both blocked; sequence and chrom sizes both blocked, which must reject and leave nothing behind; switching genome after a failure; ~~saving refused while unestablished and permitted after switching to a genome that loads completely~~ (descoped, #8); the alert on by default ~~and suppressed by the configuration option~~ and replaced by a `createBrowser` listener; the event carrying the expected failures.
+- Cases: ~~sequence blocked; a genome track blocked; both blocked; sequence and chrom sizes both blocked, which must reject and leave nothing behind;~~ _Changed in [#17](https://github.com/turner/igv.js/issues/17):_ sequence blocked, which must reject and leave nothing behind even with chrom sizes reachable; a genome track blocked; an optional part blocked, during the load and lazily; switching genome after a failure; ~~saving refused while unestablished and permitted after switching to a genome that loads completely~~ (descoped, #8); the alert on by default ~~and suppressed by the configuration option~~ and replaced by a `createBrowser` listener; the event carrying the expected failures.
 - Why not the existing Node suite: `Browser` cannot be constructed under `test/utils/mockObjects.js` today. It fails on `attachShadow`, and stubbing that reveals further gaps such as `classList`. Making it constructible would mean extending the DOM mock or moving to jsdom, a change beneath every existing test file, and would still test lower than the behavior in question.
 - Prior art: the diagnosis probes in `igv-webapp-355-repro` (request blocking plus reading back the resulting state), and the Playwright tests on igv-webapp's abandoned `dat` branch.
-- Existing Node tests stay as they are. If the Playwright infrastructure proves heavier than expected, the agreed fallback is a genome-level unit test for the sequence fallback, following `test/testGenome.js`, plus the web-app tests for the rest — but that is a fallback, not the plan.
+- Existing Node tests stay as they are. If the Playwright infrastructure proves heavier than expected, the agreed fallback is a genome-level unit test ~~for the sequence fallback~~ _(changed in #17)_, following `test/testGenome.js`, plus the web-app tests for the rest — but that is a fallback, not the plan.
 
-**Acceptance, in igv-webapp, when that change is made:** port the three cases from the `dat` branch (RefSeq blocked, sequence blocked, both blocked) and add a fourth, that the genome selector works after a failure. Run them against the local igv.js build.
+**Acceptance, in igv-webapp, when that change is made:** port the three cases from the `dat` branch (RefSeq blocked, sequence blocked, both blocked) and add a fourth, that the genome selector works after a failure. Run them against the local igv.js build. _Changed in #17: with the sequence blocked, the load rejects and there is no browser._
 
 ## Out of Scope
 
-- **A whole-host outage.** When the sequence and the chrom sizes both fail — in practice, UCSC unreachable — the load rejects and the web app shows the error and stops. Making the web app usable with no browser at all was considered and dropped: no work can begin in the web app until a browser exists. This is a known limitation, not an oversight.
+- **A whole-host outage.** When ~~the sequence and the chrom sizes both fail~~ the sequence source fails — for example, UCSC unreachable — the load rejects and the web app shows the error and stops. _Changed in #17._ Making the web app usable with no browser at all was considered and dropped: no work can begin in the web app until a browser exists. This is a known limitation, not an oversight.
 - **Falling back to a different genome.** If a genome cannot load, igv.js does not substitute another. That is the embedder's decision, and the user's, through the genome selector.
 - **Retrying a failed URL.** No retry, no backoff.
 - **Reporting failures for tracks the user loads themselves after startup.** Those already reject through the public API, which is unchanged.
