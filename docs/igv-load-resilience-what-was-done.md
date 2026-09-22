@@ -31,7 +31,7 @@ If both the sequence and chrom sizes fail, the load still rejects. For hg38 both
 **4. One report per load.**
 Each load fires one `loadfailures` event carrying an array of `{kind, url, message}`, where `kind` is `track` or `sequence` (meaning the fallback was used).
 - Subscribe with `browser.on('loadfailures', …)`, or through the `createBrowser` `listeners` config so you hear about the *first* load, which happens before you have a browser to subscribe to.
-- By default igv.js also shows **one combined alert** listing every failed URL. It's one alert rather than one per failure because the alert dialog is a single instance, so separate calls would show only the last failure. `showLoadFailureAlert: false` turns it off. Registering a listener doesn't turn it off, so an embedder that only logs failures doesn't accidentally remove the user's only notice.
+- By default igv.js also shows **one combined alert** listing every failed URL. It's one alert rather than one per failure because the alert dialog is a single instance, so separate calls would show only the last failure. ~~`showLoadFailureAlert: false` turns it off. Registering a listener doesn't turn it off, so an embedder that only logs failures doesn't accidentally remove the user's only notice.~~ _Replaced: igv.js gains no config field. A `loadfailures` handler in `createBrowser`'s existing `listeners` option turns the alert off, for that load and later ones._
 
 **5. Never strand the user (#15).**
 - **Genome switch:** the new genome is built *before* the old tracks and regions of interest are cleared. A failed switch now leaves your current genome and work in place. Previously everything was cleared first and lost.
