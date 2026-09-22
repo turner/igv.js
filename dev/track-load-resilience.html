@@ -33,7 +33,17 @@
             font: 14px/1.5 system-ui, -apple-system, "Helvetica Neue", sans-serif;
         }
 
-        main { max-width: 1040px; margin: 0 auto; }
+        main { max-width: 1600px; margin: 0 auto; }
+
+        /* The scenarios on the left; the browser on the right, pinned while the rows scroll past it */
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(360px, 600px);
+            gap: 40px;
+            align-items: start;
+        }
+        .contract { min-width: 0; }
+        .stage { position: sticky; top: 24px; min-width: 0; }
 
         h1 { font-size: 20px; font-weight: 600; margin: 0 0 8px; }
 
@@ -110,7 +120,7 @@
 
         .part { display: block; }
         .how { display: block; color: var(--muted); font-size: 12px; }
-        td.mono { overflow-wrap: anywhere; }
+        td.mono { overflow-wrap: break-word; }
 
         /* A cell shows the expectation in grey until the scenario runs, then the observation in ink */
         .expected { color: var(--muted); }
@@ -120,16 +130,25 @@
         .verdict.pass { color: var(--muted); }
         .verdict.fail { color: var(--alarm); font-weight: 600; }
 
-        section.last { margin-top: 40px; }
-        section.last h2 { font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
+        .stage h2 { font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
             color: var(--muted); margin: 0 0 8px; }
-        #payload { margin: 0 0 16px; white-space: pre-wrap; color: var(--muted); }
+        #payload { margin: 12px 0 0; white-space: pre-wrap; color: var(--muted); }
         /* igv.js draws for a light page, whatever the scheme; the page scrolls it rather than itself */
         #igvDiv { min-height: 40px; background: #fff; overflow-x: auto; }
 
+        @media (max-width: 1200px) {
+            .hide-narrow { display: none; }
+        }
+
+        /* One column: the browser comes first and stays at the top while the rows scroll beneath it */
+        @media (max-width: 960px) {
+            .layout { display: flex; flex-direction: column; gap: 24px; }
+            .stage { order: -1; top: 0; z-index: 1; width: 100%; padding: 12px 0; background: var(--paper);
+                border-bottom: 1px solid var(--rule); }
+        }
+
         @media (max-width: 720px) {
             body { padding: 24px 16px; }
-            .hide-narrow { display: none; }
             td, th { padding-right: 10px; }
         }
     </style>
@@ -147,6 +166,9 @@
         local, from <code>test/e2e/data/</code>, and each failure is a missing file.
     </p>
 
+    <div class="layout">
+
+    <section class="contract">
     <div class="bar">
         <button id="runAll">Run all</button>
         <span class="tally" id="tally"></span>
@@ -165,12 +187,15 @@
         </tr>
         </thead>
     </table>
-
-    <section class="last">
-        <h2 id="lastTitle">Browser</h2>
-        <pre id="payload" class="mono"></pre>
-        <div id="igvDiv"></div>
     </section>
+
+    <aside class="stage">
+        <h2 id="lastTitle">Click a row to run it here</h2>
+        <div id="igvDiv"></div>
+        <pre id="payload" class="mono"></pre>
+    </aside>
+
+    </div>
 
 </main>
 
