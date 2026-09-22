@@ -46,6 +46,14 @@
 
     window.genomeId = () => window.browser.genome.id
 
+    window.chromosomeNames = () => window.browser.genome.chromosomeNames
+
+    window.sequenceTrackCount = () => window.browser.findTracks("type", "sequence").length
+
+    // The id of the genome in every genomechange event received since listenForGenomeChanges
+    window.genomeChangeEvents = []
+    window.listenForGenomeChanges = () => window.browser.on("genomechange", ({genome}) => window.genomeChangeEvents.push(genome.id))
+
     // How many browsers igv.js keeps in its list of browsers
     window.browserCount = () => getAllBrowsers().length
 
