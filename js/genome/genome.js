@@ -250,11 +250,21 @@ class Genome {
         }
     }
 
+    /**
+     * Return the cytobands for a chromosome.  The cytobands load lazily, on first use, so a failure is an optional
+     * part failing after the load: it is logged once and the ideogram is drawn without them.
+     */
     async getCytobands(chr) {
-        if (this.cytobandSource) {
-            const chrName = this.getChromosomeName(chr)
-            const cytos = await this.cytobandSource.getCytobands(chrName)
-            return cytos
+        const cytobandSource = this.cytobandSource
+        if (cytobandSource) {
+            try {
+                return await cytobandSource.getCytobands(this.getChromosomeName(chr))
+            } catch (error) {
+                if (this.cytobandSource === cytobandSource) {    // Concurrent requests can fail together; log once
+                    console.error(error)
+                    this.cytobandSource = undefined
+                }
+            }
         }
     }
 

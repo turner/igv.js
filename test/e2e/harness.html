@@ -38,6 +38,8 @@
 
     window.search = locus => settle(() => window.browser.search(locus))
 
+    window.currentLoci = () => window.browser.currentLoci()
+
     window.genomeId = () => window.browser.genome.id
 
     window.chromosomeNames = () => window.browser.genome.chromosomeNames
