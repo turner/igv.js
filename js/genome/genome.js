@@ -481,13 +481,16 @@ function isDigit(val) {
 function generateGenomeID(config) {
     if (config.id !== undefined) {
         return config.id
-    } else if (config.fastaURL && StringUtils.isString(config.fastaURL) && !config.fastaURL.startsWith("data:")) {
-        return config.fastaURL
-    } else if (config.fastaURL && config.fastaURL.name) {
-        return config.fastaURL.name
-    } else {
-        return ""
     }
+    // twoBitURL first, the order loadSequence reads them in
+    for (const url of [config.twoBitURL, config.fastaURL]) {
+        if (url && StringUtils.isString(url) && !url.startsWith("data:")) {
+            return url
+        } else if (url && url.name) {
+            return url.name
+        }
+    }
+    return ""
 }
 
 // The sequence source URL, in the order of precedence loadSequence gives it

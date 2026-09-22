@@ -13,10 +13,10 @@ const EMPTY_GENOME_LABEL = /^(\.\.\.)?$/
 
 const DEFINITIONS = [
     {name: "fastaURL", genome: FASTA_ONLY, chromosomes: ["chr1", "chr2"]},
-    {name: "twoBitURL", genome: TWOBIT_ONLY, chromosomes: ["chr1"], emptyId: true, offsiteStartupSearch: true}
+    {name: "twoBitURL", genome: TWOBIT_ONLY, chromosomes: ["chr1"], offsiteStartupSearch: true}
 ]
 
-for (const {name, genome, chromosomes, emptyId, offsiteStartupSearch} of DEFINITIONS) {
+for (const {name, genome, chromosomes, offsiteStartupSearch} of DEFINITIONS) {
 
     test(`${name} alone gives a browser with the genome's chromosomes and a sequence track`, async ({igvPage}) => {
 
@@ -28,9 +28,6 @@ for (const {name, genome, chromosomes, emptyId, offsiteStartupSearch} of DEFINIT
     })
 
     test(`${name} alone gives a non-empty genome id and navbar label`, async ({igvPage}) => {
-
-        // A 2bit-only genome gets an empty id until #19 derives it from twoBitURL
-        test.fail(!!emptyId)
 
         await igvPage.createBrowser({genome})
 
@@ -53,9 +50,6 @@ for (const {name, genome, chromosomes, emptyId, offsiteStartupSearch} of DEFINIT
 }
 
 test("switching between two id-less 2bit genomes fires genomechange", async ({igvPage}) => {
-
-    // Both genomes get the same empty id until #19, so the switch looks like no change
-    test.fail()
 
     await igvPage.createBrowser({genome: TWOBIT_ONLY})
     await igvPage.listenForGenomeChanges()
