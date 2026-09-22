@@ -33,16 +33,10 @@
         if (listen) {
             config = {...config, listeners: {loadfailures: recordLoadFailures}}
         }
-        window.createBrowserConfig = config
         window.browser = await igv.createBrowser(document.getElementById("igv-div"), config)
     })
 
-    // The genome definition object createBrowser was given, as it stands now
-    window.genomeDefinition = () => window.createBrowserConfig.genome
-
     window.search = locus => settle(() => window.browser.search(locus))
-
-    window.currentLoci = () => window.browser.currentLoci()
 
     window.genomeId = () => window.browser.genome.id
 

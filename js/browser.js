@@ -625,7 +625,7 @@ class Browser {
         }
 
         // Load a hidden track -- used to populate searchable database without creating a track
-        const loadFailures = sequenceLoadFailures(genome)
+        const loadFailures = []
         const failedHidden = new Set()
         const configHidden = nonLocalTrackConfigurations.filter(config => true === config.hidden)
         for (const config of configHidden) {
@@ -802,8 +802,7 @@ class Browser {
             tracks.push({type: "sequence", order: defaultSequenceTrackOrder})
         }
 
-        const loadFailures = sequenceLoadFailures(this.genome)
-        loadFailures.push(...await this.#loadTrackListTolerantly(tracks))
+        const loadFailures = await this.#loadTrackListTolerantly(tracks)
         this.#reportLoadFailures(loadFailures)
 
         return this.genome
@@ -2768,17 +2767,6 @@ function trackLoadFailure(config, error) {
         url: describeTrackURL(config) || config.fastaURL || config.name,
         message: describeLoadError(error.cause || error)
     }
-}
-
-/**
- * The load failure for a sequence fallback, as reported by the loadfailures event, if the genome fell back.
- *
- * @param genome
- * @returns {Array}  Zero or one {kind, url, message}
- */
-function sequenceLoadFailures(genome) {
-    const fallback = genome.sequenceFallback
-    return fallback ? [{kind: 'sequence', url: fallback.url, message: describeLoadError(fallback.error)}] : []
 }
 
 export default Browser
