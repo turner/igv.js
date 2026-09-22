@@ -625,7 +625,7 @@ class Browser {
         }
 
         // Load a hidden track -- used to populate searchable database without creating a track
-        const loadFailures = []
+        const loadFailures = genomeLoadFailures(genome)
         const failedHidden = new Set()
         const configHidden = nonLocalTrackConfigurations.filter(config => true === config.hidden)
         for (const config of configHidden) {
@@ -802,7 +802,8 @@ class Browser {
             tracks.push({type: "sequence", order: defaultSequenceTrackOrder})
         }
 
-        const loadFailures = await this.#loadTrackListTolerantly(tracks)
+        const loadFailures = genomeLoadFailures(this.genome)
+        loadFailures.push(...await this.#loadTrackListTolerantly(tracks))
         this.#reportLoadFailures(loadFailures)
 
         return this.genome
@@ -2769,5 +2770,18 @@ function trackLoadFailure(config, error) {
     }
 }
 
-export default Browser
+/**
+ * The optional genome parts that failed while the genome was built, as reported by the loadfailures event.
+ * A Genbank genome records none.
+ *
+ * @param genome  The genome just loaded
+ */
+function genomeLoadFailures(genome) {
+    return (genome.loadFailures || []).map(({kind, url, error}) => ({
+        kind,
+        url,
+        message: describeLoadError(error.cause || error)
+    }))
+}
 
+export default Browser
