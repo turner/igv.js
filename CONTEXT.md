@@ -7,26 +7,22 @@ A genome browser that embeds in a web page. It shows a reference genome, and dat
 ### Genome
 
 **Genome**:
-A reference assembly: its chromosomes (names and lengths), where its bases come from, and optional cytobands and **genome tracks**.
-_Avoid_: reference (for the whole assembly), assembly
+A reference assembly: its **sequence source**, the chromosomes (names and lengths) that source provides, and any **optional parts**.
+_Avoid_: reference (for the whole assembly), assembly, partially constructed genome (a genome whose **optional part** failed is still a complete genome; one whose **genome track** failed is a complete genome in a session missing that track)
 
 **Genome definition**:
-The description of a **genome** that a caller supplies, either as an ID that igv.js resolves or as a configuration object.
+The description of a **genome** that a caller supplies, either as an ID that igv.js resolves or as a configuration object. At minimum it names a **sequence source** (a FASTA or 2bit file); that alone is enough to build a **genome** and a browser. Everything else in it is an **optional part**.
 _Avoid_: genome config, genome JSON
 
+**Optional part**:
+Any part of a **genome definition** other than its **sequence source**: chromosome sizes, cytobands, chromosome aliases, and **genome tracks**.
+
 **Sequence source**:
-Where a **genome**'s bases come from (2bit, FASTA, or chromosome sizes only). It is loaded while the **genome** is built.
+Where a **genome**'s bases come from: a 2bit or FASTA file. It is loaded while the **genome** is built, and it is the one part a **genome** cannot do without.
 _Avoid_: sequence track (a different thing), reference
 
-**Sequence-less genome**:
-A **genome** whose chromosomes are known but whose bases are not, because its **sequence source** supplies only chromosome sizes. Navigation works, and anything that needs bases does not.
-_Avoid_: degraded genome, reduced genome
-
-**Sequence fallback**:
-Loading a **sequence-less genome** in place of a **genome** whose **sequence source** failed. A **genome definition** that asks for chromosome sizes only gives a **sequence-less genome**, but that is not a **sequence fallback**.
-
 **Established session**:
-The state of the browser once its **genome** has loaded exactly as its **genome definition** describes: its real **sequence source**, every **genome track**, and the **sequence track**. After a **sequence fallback**, or when a **genome track** failed, the session is not established.
+The state of the browser once its **genome** has loaded exactly as its **genome definition** describes: its **sequence source**, every **optional part**, and the **sequence track**. When an **optional part** failed, the session is not established.
 _Descoped (#8)_: nothing refuses to save or share a session that is not established. The term is kept for discussion only.
 _Avoid_: fully loaded, complete session
 
@@ -45,7 +41,8 @@ The tracks a session or `createBrowser` configuration lists, as opposed to the *
 
 ## Relationships
 
-- A **genome** has exactly one **sequence source**. A **sequence-less genome** is one whose **sequence source** supplies chromosome sizes only.
+- A **genome** has exactly one **sequence source**. Chromosome sizes never stand in for it.
+- A **genome** loads if and only if its **sequence source** loads. An **optional part** that fails is left out and never stops the **genome** loading. It is reported if it fails while the **genome** loads, and logged if it fails later, on first use.
 - A **genome** has zero or more **genome tracks**. Loading a session loads the **genome tracks** first, then the **session tracks**.
 - The **sequence track** reads from the **genome**'s **sequence source**. It never loads a file of its own unless its configuration names one.
 
@@ -54,3 +51,4 @@ The tracks a session or `createBrowser` configuration lists, as opposed to the *
 ## Flagged ambiguities
 
 - "The sequence failed" has been used to mean the **sequence track** failed. What fails is the **sequence source**, while the **genome** is built. The **sequence track** fetches nothing when it is created.
+- "Sequence-less genome" and "sequence fallback" named a genome built from chromosome sizes alone. A definition that supplies only chromosome sizes is not a **genome definition**, so neither term is part of the language.
