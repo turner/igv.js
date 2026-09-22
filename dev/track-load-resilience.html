@@ -2,265 +2,500 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Track load resilience</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Load resilience</title>
     <style>
-        body { font-family: system-ui, sans-serif; margin: 16px; }
-        h1 { font-size: 20px; margin: 0 0 4px; }
-        p.intro { margin: 0 0 12px; color: #555; max-width: 900px; }
-        .controls { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 12px; }
-        fieldset { border: 1px solid #ccc; border-radius: 4px; padding: 8px 12px; }
-        legend { font-weight: 600; font-size: 13px; }
-        fieldset button { display: block; width: 100%; text-align: left; margin: 4px 0; padding: 4px 8px; cursor: pointer; }
-        #removeBrowser, #clearLog { display: block; width: 100%; margin: 4px 0 8px; padding: 4px 8px; cursor: pointer; }
-        fieldset button small { display: block; color: #666; }
-        #status { font-family: monospace; font-size: 12px; margin-bottom: 8px; }
-        #log { font-family: monospace; font-size: 12px; background: #f6f6f6; border: 1px solid #ddd; height: 180px;
-            overflow-y: auto; padding: 6px; white-space: pre-wrap; margin-bottom: 12px; }
-        #log .ok { color: #1a7f37; }
-        #log .fail { color: #b3261e; }
-        #log .event { color: #6a3fb5; }
-        #igvDiv { min-height: 100px; border: 1px dashed #bbb; }
-        .panes { display: flex; gap: 12px; margin-bottom: 12px; }
-        .panes > div { flex: 1; min-width: 0; }
-        .panes h2 { font-size: 13px; margin: 0 0 4px; }
-        .panes #log { margin-bottom: 0; }
-        #hostView { font-family: monospace; font-size: 12px; background: #f6f6f6; border: 1px solid #ddd; height: 180px;
-            overflow-y: auto; padding: 6px; }
-        #hostView pre { margin: 0 0 10px; white-space: pre-wrap; }
+        :root {
+            --ink: #1d1d1b;
+            --muted: #8a8a85;
+            --rule: #d9d9d4;
+            --hover: #f3f3ef;
+            --paper: #fbfbf8;
+            --alarm: #c8102e;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --ink: #e6e6e1;
+                --muted: #86867f;
+                --rule: #3a3a36;
+                --hover: #26261f;
+                --paper: #1a1a17;
+                --alarm: #ff5a4f;
+            }
+        }
+
+        body {
+            margin: 0;
+            padding: 48px 24px;
+            background: var(--paper);
+            color: var(--ink);
+            font: 14px/1.5 system-ui, -apple-system, "Helvetica Neue", sans-serif;
+        }
+
+        main { max-width: 1040px; margin: 0 auto; }
+
+        h1 { font-size: 20px; font-weight: 600; margin: 0 0 8px; }
+
+        p { margin: 0 0 32px; max-width: 64ch; color: var(--muted); }
+        p strong { color: var(--ink); font-weight: 500; }
+
+        code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+
+        .bar { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; margin-bottom: 12px; font-size: 13px; }
+        .bar .tally { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+        button {
+            font: inherit;
+            color: var(--ink);
+            background: none;
+            border: 0;
+            border-bottom: 1px solid var(--ink);
+            padding: 0;
+            cursor: pointer;
+        }
+        button:disabled { color: var(--muted); border-color: var(--muted); cursor: default; }
+
+
+        table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+
+        th {
+            text-align: left;
+            font-weight: 500;
+            font-size: 11px;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--muted);
+            padding: 0 16px 6px 0;
+            border-bottom: 1px solid var(--ink);
+        }
+
+        td { padding: 7px 16px 7px 0; vertical-align: top; border-bottom: 1px solid var(--rule); }
+        td:last-child, th:last-child { padding-right: 0; text-align: right; width: 1.5em; }
+
+        tbody.group th {
+            text-align: left;
+            width: auto;
+            font: 12px ui-monospace, "SF Mono", Menlo, monospace;
+            letter-spacing: 0;
+            text-transform: none;
+            color: var(--ink);
+            padding: 20px 0 6px;
+            border-bottom: 1px solid var(--rule);
+        }
+
+        tr.scenario { cursor: pointer; }
+        tr.scenario:hover td { background: var(--hover); }
+        tr.scenario.running td { color: var(--muted); }
+        tr.scenario.selected td:first-child { box-shadow: inset 2px 0 var(--ink); }
+
+        /* Disclosure: the configuration a row passes to igv.js */
+        td.toggle, th.toggle { width: 22px; padding: 0; }
+        td.toggle button { border: 0; width: 22px; height: 40px; color: var(--muted); }
+        td.toggle button:hover { color: var(--ink); }
+        td.toggle button::before {
+            content: "";
+            display: inline-block;
+            border-left: 6px solid currentColor;
+            border-top: 4px solid transparent;
+            border-bottom: 4px solid transparent;
+            transition: transform .12s;
+        }
+        tr.scenario.open td.toggle button::before { transform: rotate(90deg); }
+        tr.config td { padding: 0 0 14px; border-bottom: 1px solid var(--rule); text-align: left; width: auto; }
+        tr.config pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); }
+        tr.config .step { color: var(--ink); }
+        tr.config .comment { font-style: italic; }
+        tr.scenario.open td { border-bottom-color: transparent; }
+
+        .part { display: block; }
+        .how { display: block; color: var(--muted); font-size: 12px; }
+        td.mono { overflow-wrap: anywhere; }
+
+        /* A cell shows the expectation in grey until the scenario runs, then the observation in ink */
+        .expected { color: var(--muted); }
+        .miss { color: var(--alarm); }
+        .miss small { display: block; color: var(--muted); font-size: 11px; }
+
+        .verdict.pass { color: var(--muted); }
+        .verdict.fail { color: var(--alarm); font-weight: 600; }
+
+        section.last { margin-top: 40px; }
+        section.last h2 { font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
+            color: var(--muted); margin: 0 0 8px; }
+        #payload { margin: 0 0 16px; white-space: pre-wrap; color: var(--muted); }
+        /* igv.js draws for a light page, whatever the scheme; the page scrolls it rather than itself */
+        #igvDiv { min-height: 40px; background: #fff; overflow-x: auto; }
+
+        @media (max-width: 720px) {
+            body { padding: 24px 16px; }
+            .hide-narrow { display: none; }
+            td, th { padding-right: 10px; }
+        }
     </style>
 </head>
 
 <body>
+<main>
 
-<h1>Track load resilience</h1>
-<p class="intro">
-    Exercises the load-resilience work (docs/specs/load-resilience.md). Every resource is a local file from
-    <code>test/e2e/data/</code>, so failures are deterministic. Each <code>loadfailures</code> event and each API
-    call's outcome is logged below. The right-hand pane shows, per call, everything a host application
-    receives: whether the promise resolved or rejected (and the error), the raw <code>loadfailures</code> payload if
-    the event fired, and the browser state it can query afterwards. The page starts with no browser; pick a <code>createBrowser</code> scenario,
-    or <em>Remove browser</em> to start over.
-</p>
+    <h1>Load resilience</h1>
+    <p>
+        <strong>A genome loads if and only if its sequence source loads.</strong>
+        Every other part of a genome definition is optional: if it fails while the genome loads, it is left out and
+        reported once, in one <code>loadfailures</code> event. Each row below is one claim of that contract
+        (ADR 0002). Grey is what the contract expects; running a row fills in what igv.js did. Every file is
+        local, from <code>test/e2e/data/</code>, and each failure is a missing file.
+    </p>
 
-<div class="controls">
-    <fieldset id="createScenarios">
-        <legend>igv.createBrowser (replaces the current browser)</legend>
-    </fieldset>
-    <fieldset id="browserScenarios">
-        <legend>On the current browser</legend>
-    </fieldset>
-    <fieldset>
-        <legend>Options</legend>
-        <button id="removeBrowser">Remove browser</button>
-        <button id="clearLog">Clear log</button>
-        <label><input type="checkbox" id="showAlert" checked> showLoadFailureAlert</label>
-    </fieldset>
-</div>
-
-<div id="status"></div>
-<div class="panes">
-    <div>
-        <h2>Log</h2>
-        <div id="log"></div>
+    <div class="bar">
+        <button id="runAll">Run all</button>
+        <span class="tally" id="tally"></span>
     </div>
-    <div>
-        <h2>What the host application receives (latest call first)</h2>
-        <div id="hostView"></div>
-    </div>
-</div>
-<div id="igvDiv"></div>
+
+    <table>
+        <thead>
+        <tr>
+            <th class="toggle"></th>
+            <th>What fails</th>
+            <th class="hide-narrow">Call</th>
+            <th>Promise</th>
+            <th>Reported</th>
+            <th>Genome after</th>
+            <th></th>
+        </tr>
+        </thead>
+    </table>
+
+    <section class="last">
+        <h2 id="lastTitle">Browser</h2>
+        <pre id="payload" class="mono"></pre>
+        <div id="igvDiv"></div>
+    </section>
+
+</main>
 
 <script type="module">
 
     import igv from "../js/index.js"
 
     const DATA = "../test/e2e/data"
-    const MISSING = `${DATA}/does-not-exist`
+    const MISSING = `${DATA}/missing`
 
-    // Track configurations, one per way a track can fail
-    const goodTrack = {name: "Genes (good)", type: "annotation", format: "bed", url: `${DATA}/tiny.genes.bed`}
-    const notFoundTrack = {name: "404 track", type: "annotation", format: "bed", url: `${MISSING}.bed`}
-    const networkErrorTrack = {name: "Unreachable host", type: "annotation", format: "bed", url: "https://nonexistent.invalid/genes.bed"}
-    const unparseableTrack = {name: "BED posing as bigwig", type: "wig", format: "bigwig", url: `${DATA}/tiny.genes.bed`}
-    const hiddenFailingTrack = {name: "Hidden 404 (search index)", type: "annotation", format: "bed", url: `${MISSING}.hidden.bed`, hidden: true}
+    const genesTrack = {name: "Tiny genes", type: "annotation", format: "bed", url: `${DATA}/tiny.genes.bed`}
+    const missingTrack = (name, url = `${MISSING}.bed`) => ({name, type: "annotation", format: "bed", url})
 
-    const genome = overrides => ({
+    // The full definition: a sequence source plus every optional part the tiny genome has
+    const TINY = {
         id: "tiny",
         name: "Tiny test genome",
         fastaURL: `${DATA}/tiny.fa`,
         indexURL: `${DATA}/tiny.fa.fai`,
         chromSizesURL: `${DATA}/tiny.chrom.sizes`,
-        tracks: [goodTrack],
-        ...overrides
-    })
+        tracks: [genesTrack]
+    }
 
-    const healthyGenome = genome()
-    const genomeTrackFails = genome({id: "tiny-bad-tracks", name: "Tiny, genome track 404", tracks: [goodTrack, notFoundTrack]})
-    const sequenceFails = genome({id: "tiny-dead", name: "Tiny, sequence 404", fastaURL: `${MISSING}.fa`, indexURL: `${MISSING}.fa.fai`})
-    const chromSizesOnlyGenome = {id: "tiny-sizes", name: "Tiny chrom sizes only", format: "chromsizes", fastaURL: `${DATA}/tiny.chrom.sizes`}
+    const ANY = Symbol("any genome")
 
-    // An otherwise healthy session: several good data tracks and one whose URL has gone stale
-    const oneStaleTrack = [
-        {...goodTrack, name: "Data track A", color: "rgb(0,120,0)"},
-        {...goodTrack, name: "Data track B", color: "rgb(180,0,0)"},
-        {name: "Stale track (404)", type: "annotation", format: "bed", url: `${MISSING}.stale.bed`},
-        {...goodTrack, name: "Data track C", color: "rgb(120,0,160)"}
-    ]
-
-    const mixedTracks = [goodTrack, notFoundTrack, networkErrorTrack, unparseableTrack, hiddenFailingTrack]
-
-    const createScenarios = [
-        ["Healthy genome", "Baseline: no failures, no event", {genome: healthyGenome}],
-        ["Genome track fails", "Browser comes up; one event, one alert", {genome: genomeTrackFails}],
-        ["Sequence fails", "The only fatal case: createBrowser rejects, nothing appears, even with chrom sizes", {genome: sequenceFails}],
-        ["Chrom-sizes-only genome", "No sequence by design; no event", {genome: chromSizesOnlyGenome}],
-        ["Healthy session, one stale track", "Browser comes up with tracks A, B, C; the 404 is reported", {genome: healthyGenome, tracks: oneStaleTrack}],
-        ["Session with failing tracks", "404, network, unparseable, hidden", {genome: healthyGenome, tracks: mixedTracks}]
-    ]
-
-    const browserScenarios = [
-        ["loadSession: failing tracks", "Tolerant: good tracks load, one event", b => b.loadSession({reference: healthyGenome, tracks: mixedTracks})],
-        ["loadGenome: genome track fails", "Tolerant: switches genome, one event", b => b.loadGenome(genomeTrackFails)],
-        ["loadGenome: unloadable genome", "Rejects; current genome and tracks kept", b => b.loadGenome(sequenceFails)],
-        ["loadGenome: healthy", "Back to the tiny genome with bases", b => b.loadGenome(healthyGenome)],
-        ["loadTrackList: good + 404", "Strict: rejects, no event; good track still added", b => b.loadTrackList([{...goodTrack, name: "Genes (again)"}, notFoundTrack])],
-        ["loadTrack: 404", "Strict: rejects, no event", b => b.loadTrack(notFoundTrack)]
+    // expect: promise, the kinds in the one loadfailures event ([] = no event), and the genome id afterwards
+    // (null = no browser, ANY = some genome). `call` and `arg` are a browser method and its argument, called on a
+    // browser already showing TINY.
+    const groups = [
+        ["igv.createBrowser()", [
+            {
+                part: "Nothing", how: "The minimal definition: fastaURL alone",
+                create: {genome: {fastaURL: `${DATA}/tiny.fa`}},
+                expect: {promise: "resolves", reported: [], genome: ANY}
+            },
+            {
+                part: "Nothing", how: "The full definition",
+                create: {genome: TINY},
+                expect: {promise: "resolves", reported: [], genome: "tiny"}
+            },
+            {
+                part: "Sequence source", how: "fastaURL is missing; chrom sizes are present",
+                create: {genome: {...TINY, id: "tiny-no-sequence", fastaURL: `${MISSING}.fa`, indexURL: `${MISSING}.fa.fai`}},
+                expect: {promise: "rejects", reported: [], genome: null}
+            },
+            {
+                part: "Chrom sizes", how: "chromSizesURL, on a 2bit genome that needs it",
+                create: {genome: {twoBitURL: "../test/data/twobit/foo.2bit", chromSizesURL: `${MISSING}.chrom.sizes`}},
+                expect: {promise: "resolves", reported: ["chromSizes"], genome: ANY}
+            },
+            {
+                part: "Chromosome aliases", how: "chromAliasBbURL, preloaded during the load",
+                create: {genome: {...TINY, id: "tiny-alias-bb", chromAliasBbURL: `${MISSING}.chromAlias.bb`}},
+                expect: {promise: "resolves", reported: ["chromAlias"], genome: "tiny-alias-bb"}
+            },
+            {
+                part: "Chromosome aliases", how: "aliasURL, loaded lazily: logged, not reported",
+                create: {genome: {...TINY, id: "tiny-alias", aliasURL: `${MISSING}.chromAlias.txt`}},
+                expect: {promise: "resolves", reported: [], genome: "tiny-alias"}
+            },
+            {
+                part: "Cytobands", how: "cytobandURL, loaded lazily: logged, not reported",
+                create: {genome: {...TINY, id: "tiny-cytobands", cytobandURL: `${MISSING}.cytoband.txt`}},
+                expect: {promise: "resolves", reported: [], genome: "tiny-cytobands"}
+            },
+            {
+                part: "Genome track", how: "One of the definition's two tracks",
+                create: {genome: {...TINY, id: "tiny-genome-track", tracks: [genesTrack, missingTrack("Missing genome track")]}},
+                expect: {promise: "resolves", reported: ["track"], genome: "tiny-genome-track"}
+            },
+            {
+                part: "Session tracks", how: "Missing, unreachable host, unparseable, hidden",
+                create: {
+                    genome: TINY,
+                    tracks: [
+                        missingTrack("Missing"),
+                        missingTrack("Unreachable", "https://nonexistent.invalid/genes.bed"),
+                        {name: "BED posing as bigwig", type: "wig", format: "bigwig", url: `${DATA}/tiny.genes.bed`},
+                        {...missingTrack("Hidden", `${MISSING}.hidden.bed`), hidden: true}
+                    ]
+                },
+                expect: {promise: "resolves", reported: ["track", "track", "track", "track"], genome: "tiny"}
+            }
+        ]],
+        ["browser, already showing tiny", [
+            {
+                part: "Sequence source", how: "The current genome and tracks are kept",
+                call: "loadGenome", arg: {...TINY, id: "tiny-no-sequence", fastaURL: `${MISSING}.fa`, indexURL: `${MISSING}.fa.fai`},
+                expect: {promise: "rejects", reported: [], genome: "tiny"}
+            },
+            {
+                part: "Aliases and a genome track", how: "Both reported, in one event",
+                call: "loadGenome", arg: {...TINY, id: "tiny-alias-bb", chromAliasBbURL: `${MISSING}.chromAlias.bb`, tracks: [genesTrack, missingTrack("Missing genome track")]},
+                expect: {promise: "resolves", reported: ["chromAlias", "track"], genome: "tiny-alias-bb"}
+            },
+            {
+                part: "Session track", how: "The rest of the session opens",
+                call: "loadSession", arg: {genome: TINY, tracks: [genesTrack, missingTrack("Missing")]},
+                expect: {promise: "resolves", reported: ["track"], genome: "tiny"}
+            },
+            {
+                part: "Track", how: "Strict: the caller handles the rejection",
+                call: "loadTrackList", arg: [{...genesTrack, name: "Genes again"}, missingTrack("Missing")],
+                expect: {promise: "rejects", reported: [], genome: "tiny"}
+            },
+            {
+                part: "Track", how: "Strict: the caller handles the rejection",
+                call: "loadTrack", arg: missingTrack("Missing"),
+                expect: {promise: "rejects", reported: [], genome: "tiny"}
+            }
+        ]]
     ]
 
     const igvDiv = document.getElementById("igvDiv")
-    const logDiv = document.getElementById("log")
-    const statusDiv = document.getElementById("status")
-    const showAlert = document.getElementById("showAlert")
-    const hostView = document.getElementById("hostView")
+    const payloadPre = document.getElementById("payload")
+    const lastTitle = document.getElementById("lastTitle")
+    const runAllButton = document.getElementById("runAll")
+    const tally = document.getElementById("tally")
+    const table = document.querySelector("table")
 
-    let browser
+    const scenarios = groups.flatMap(([, rows]) => rows)
+    let busy = false
 
-    // loadfailures payloads received during the current call, reported with its outcome
-    let receivedPayloads = []
-
-    function log(text, className) {
-        const line = document.createElement("div")
-        line.textContent = `${new Date().toLocaleTimeString()}  ${text}`
-        if (className) line.className = className
-        logDiv.appendChild(line)
-        logDiv.scrollTop = logDiv.scrollHeight
+    const describe = {
+        promise: value => value,
+        reported: kinds => kinds.length ? countKinds(kinds) : "—",
+        genome: id => id === ANY ? "a genome" : id === null ? "no browser" : id
     }
 
-    function onLoadFailures(failures) {
-        receivedPayloads.push(failures)
-        log(`loadfailures event (${failures.length}):`, "event")
-        for (const {kind, url, message} of failures) {
-            log(`    [${kind}] ${url} — ${message}`, "event")
-        }
+    const matches = {
+        promise: (expected, observed) => expected === observed,
+        reported: (expected, observed) => expected.join() === observed.join(),
+        genome: (expected, observed) => expected === ANY ? typeof observed === "string" && observed !== "" : expected === observed
     }
 
-    function updateStatus() {
-        if (!browser) {
-            statusDiv.textContent = `No browser. Elements left in the container: ${igvDiv.children.length}`
-            return
-        }
-        const tracks = browser.trackViews.map(tv => tv.track.name).filter(Boolean)
-        statusDiv.textContent = `Genome: ${browser.genome.id}  |  Tracks: ${tracks.join(", ") || "none"}`
-    }
+    const FACETS = Object.keys(describe)
 
-    function describeError(error) {
-        if (!(error instanceof Error)) return String(error)
-        const description = {name: error.name, message: error.message}
-        if (error.cause !== undefined) description.cause = describeError(error.cause)
-        return description
-    }
-
-    // The state a host can read back from the browser after a call
-    function hostState() {
-        if (!browser) return null
+    // The createBrowser configuration: the harness's options, then the scenario's. `record` receives each event;
+    // registering it also replaces igv.js's own alert, so a run is never interrupted.
+    function browserConfig(config, record) {
         return {
-            genome: browser.genome.id,
-            tracks: browser.trackViews.map(tv => tv.track.name).filter(Boolean)
+            loadDefaultGenomes: false,
+            listeners: {loadfailures: record},
+            ...structuredClone(config)
         }
     }
 
-    function showHostRecord(label, record) {
-        const pre = document.createElement("pre")
-        pre.textContent = `// ${new Date().toLocaleTimeString()}  ${label}\n${JSON.stringify(record, null, 2)}`
-        hostView.prepend(pre)
-        hostView.scrollTop = 0
-    }
-
-    async function run(label, call) {
-        log(`▶ ${label}`)
-        receivedPayloads = []
-        const record = {}
-        try {
-            await call()
-            record.promise = "resolved"
-            log(`✔ ${label}: resolved`, "ok")
-        } catch (error) {
-            console.error(error)
-            record.promise = "rejected"
-            record.error = describeError(error)
-            log(`✘ ${label}: rejected — ${error.message || error}`, "fail")
+    // Every call a scenario makes, in order, each as [the call up to its last argument, that argument as passed]
+    function steps(scenario, record) {
+        if (scenario.create) {
+            return [["igv.createBrowser(igvDiv, ", browserConfig(scenario.create, record)]]
         }
-        record.loadfailures = receivedPayloads.length === 0 ? "(event not fired)" :
-            receivedPayloads.length === 1 ? receivedPayloads[0] : receivedPayloads
-        record.stateAfter = hostState() ?? "(no browser)"
-        showHostRecord(label, record)
-        updateStatus()
+        return [
+            ["igv.createBrowser(igvDiv, ", browserConfig({genome: TINY}, record)],
+            [`browser.${scenario.call}(`, structuredClone(scenario.arg)]
+        ]
     }
 
-    // Remove every browser igv knows of, and anything left in the container, so each scenario starts clean
-    function removeBrowser() {
+    // A function can't be shown as JSON: it reads as ƒ
+    function formatStep([code, argument]) {
+        const json = JSON.stringify(argument, (key, value) => typeof value === "function" ? "ƒ" : value, 2)
+        return `<span class="step">${code}</span>${escapeHTML(json.replaceAll('"ƒ"', "ƒ"))}<span class="step">)</span>`
+    }
+
+    // The configuration a scenario passes. A call on a running browser is preceded by the same setup every time,
+    // so the setup is a one-line comment and only the call itself is shown in full.
+    function formatSteps(scenario) {
+        const [create, call] = steps(scenario, () => {})
+        if (!call) {
+            return formatStep(create)
+        }
+        const setup = `// setup, not part of the claim: igv.createBrowser(igvDiv, {genome: ${create[1].genome.id}, …})`
+        return `<span class="comment">${setup}</span>\n${formatStep(call)}`
+    }
+
+    function escapeHTML(text) {
+        return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+    }
+
+    // ["chromAlias", "track", "track"] reads "chromAlias · track ×2"
+    function countKinds(kinds) {
+        const counts = new Map()
+        for (const kind of kinds) counts.set(kind, (counts.get(kind) || 0) + 1)
+        return [...counts].map(([kind, n]) => n > 1 ? `${kind} ×${n}` : kind).join(" · ")
+    }
+
+    function render() {
+        for (const [title, rows] of groups) {
+            const tbody = table.createTBody()
+            tbody.className = "group"
+            tbody.innerHTML = `<tr><th></th><th colspan="6">${title}</th></tr>`
+
+            const body = table.createTBody()
+            for (const scenario of rows) {
+                const row = body.insertRow()
+                row.className = "scenario"
+                row.innerHTML =
+                    `<td class="toggle"><button aria-label="Show configuration" aria-expanded="false"></button></td>` +
+                    `<td><span class="part">${scenario.part}</span><span class="how">${scenario.how}</span></td>` +
+                    `<td class="mono hide-narrow">${scenario.call ? `${scenario.call}()` : ""}</td>` +
+                    FACETS.map(facet => `<td class="mono expected" data-facet="${facet}">${describe[facet](scenario.expect[facet])}</td>`).join("") +
+                    `<td class="verdict"></td>`
+                row.addEventListener("click", () => runOne(scenario))
+                scenario.row = row
+
+                const config = body.insertRow()
+                config.className = "config"
+                config.hidden = true
+                config.innerHTML = `<td></td><td colspan="6"><pre class="mono"></pre></td>`
+
+                const toggle = row.querySelector("td.toggle button")
+                toggle.addEventListener("click", event => {
+                    event.stopPropagation()   // Opening the configuration doesn't run the scenario
+                    const open = config.hidden
+                    if (open) {
+                        config.querySelector("pre").innerHTML = formatSteps(scenario)
+                    }
+                    config.hidden = !open
+                    row.classList.toggle("open", open)
+                    toggle.setAttribute("aria-expanded", String(open))
+                })
+            }
+        }
+    }
+
+    function show(scenario, observed) {
+        const row = scenario.row
+        let pass = true
+        for (const facet of FACETS) {
+            const cell = row.querySelector(`[data-facet="${facet}"]`)
+            const expected = scenario.expect[facet]
+            const ok = matches[facet](expected, observed[facet])
+            pass &&= ok
+            cell.className = ok ? "mono" : "mono miss"
+            cell.innerHTML = ""
+            cell.append(describe[facet](observed[facet]))
+            if (!ok) {
+                const note = document.createElement("small")
+                note.textContent = `expected ${describe[facet](expected)}`
+                cell.append(note)
+            }
+        }
+        const verdict = row.querySelector(".verdict")
+        verdict.className = `verdict ${pass ? "pass" : "fail"}`
+        verdict.textContent = pass ? "✓" : "✗"
+        scenario.pass = pass
+        updateTally()
+    }
+
+    function updateTally() {
+        const run = scenarios.filter(s => s.pass !== undefined)
+        const failed = run.filter(s => !s.pass).length
+        tally.textContent = run.length === 0 ? "" :
+            `${run.length} of ${scenarios.length} run · ${failed ? `${failed} contrary to the contract` : "all as the contract says"}`
+    }
+
+    // Each scenario starts from nothing: no browser, an empty container
+    function reset() {
         igv.removeAllBrowsers()
         igvDiv.replaceChildren()
-        browser = undefined
-        updateStatus()
     }
 
-    async function recreate(label, config) {
-        removeBrowser()
-        await run(`createBrowser — ${label}`, async () => {
-            browser = await igv.createBrowser(igvDiv, {
-                loadDefaultGenomes: false,
-                showLoadFailureAlert: showAlert.checked,
-                listeners: {loadfailures: onLoadFailures},
-                ...structuredClone(config)
-            })
-        })
+    async function execute(scenario) {
+
+        reset()
+        const events = []
+        const [create, call] = steps(scenario, failures => events.push(failures))
+
+        let browser, promise, error
+        try {
+            browser = await igv.createBrowser(igvDiv, create[1])
+            if (call) {
+                events.length = 0   // The setup load is not part of the scenario
+                await browser[scenario.call](call[1])
+            }
+            promise = "resolves"
+        } catch (e) {
+            console.error(e)
+            promise = "rejects"
+            error = e.message || String(e)
+        }
+
+        // A second event would break "reported once": record it as a mismatch rather than merge it away
+        const reported = events.length > 1 ? [`${events.length} events`] : (events[0] || []).map(f => f.kind)
+        const genome = browser?.genome?.id ?? null
+
+        return {observed: {promise, reported, genome}, events, error}
     }
 
-    function addButtons(fieldset, scenarios, handler) {
-        for (const [label, hint, arg] of scenarios) {
-            const button = document.createElement("button")
-            button.innerHTML = `${label}<small>${hint}</small>`
-            button.addEventListener("click", () => handler(label, arg))
-            fieldset.appendChild(button)
+    async function run(scenario) {
+        for (const s of scenarios) s.row.classList.toggle("selected", s === scenario)
+        scenario.row.classList.add("running")
+        const {observed, events, error} = await execute(scenario)
+        scenario.row.classList.remove("running")
+        show(scenario, observed)
+
+        lastTitle.textContent = `${scenario.part} — ${scenario.how}`
+        const lines = []
+        if (error) lines.push(`rejected: ${error}`)
+        for (const failures of events) {
+            lines.push(`loadfailures (${failures.length})`)
+            for (const {kind, url, message} of failures) lines.push(`  ${kind}  ${url}  ${message}`)
+        }
+        payloadPre.textContent = lines.join("\n")
+    }
+
+    async function exclusive(task) {
+        if (busy) return
+        busy = true
+        runAllButton.disabled = true
+        try {
+            await task()
+        } finally {
+            busy = false
+            runAllButton.disabled = false
         }
     }
 
-    addButtons(document.getElementById("createScenarios"), createScenarios, (label, config) => recreate(label, config))
+    const runOne = scenario => exclusive(() => run(scenario))
 
-    addButtons(document.getElementById("browserScenarios"), browserScenarios, (label, call) => {
-        if (!browser) {
-            log(`No browser — create one first`, "fail")
-            return
-        }
-        return run(label, () => call(browser))
-    })
+    runAllButton.addEventListener("click", () => exclusive(async () => {
+        for (const scenario of scenarios) await run(scenario)
+    }))
 
-    showAlert.addEventListener("change", () => {
-        if (browser) browser.config.showLoadFailureAlert = showAlert.checked
-    })
-
-    document.getElementById("removeBrowser").addEventListener("click", () => {
-        removeBrowser()
-        log("Browser removed")
-    })
-
-    document.getElementById("clearLog").addEventListener("click", () => {
-        logDiv.replaceChildren()
-        hostView.replaceChildren()
-    })
-
-    updateStatus()
+    render()
 
 </script>
 
