@@ -22,7 +22,7 @@ What belongs where:
 
 - **Handoff file** — the re-hydration payload: the reasoning, the options weighed and rejected, the provenance of the grilling. Link to it from the issue; never paste it in.
 - **Issue** — the contract: problem, solution, and the decisions that bind an implementer. House style caps apply.
-- **`docs/specs/<slug>.md`** — a spec that outgrew its issue. The issue links to it. Worked example: issue #1 carries the contract, [`docs/specs/load-resilience.md`](../specs/load-resilience.md) carries the user stories and the decisions in full.
+- **`docs/specs/<slug>.md`** — a spec that outgrew its issue. The issue links to it.
 
 **Symptom that this step was skipped:** an issue that reads like a session transcript — user stories enumerated, alternatives weighed inline, notes addressed to whoever implements it. That material is re-hydration doing its job in the wrong artifact. Move it to the handoff or the spec file and leave the contract behind.
 
