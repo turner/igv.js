@@ -1,0 +1,18 @@
+# Paths that exist only in this fork and must never reach igvteam/igv.js.
+# One path per line, relative to the repo root. A trailing "/" covers the
+# whole directory. Read by scripts/fork/fork-only-guard; see
+# docs/fork-and-upstream-workflow.md.
+#
+# CLAUDE.md is shared with upstream, but the fork adds its own sections to it,
+# and a path check cannot tell which lines changed. So any edit to it
+# outside master is blocked.
+
+.fork-only
+CLAUDE.md
+CONTEXT.md
+.github/pull_request_template.md
+docs/adr/
+docs/agents/
+docs/specs/
+docs/fork-and-upstream-workflow.md
+scripts/fork/

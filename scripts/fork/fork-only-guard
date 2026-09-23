@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+#
+# Keeps fork-only paths (listed in .fork-only) off every branch except master.
+# See docs/fork-and-upstream-workflow.md.
+#
+#   fork-only-guard                  check staged changes (pre-commit, pre-merge-commit)
+#   fork-only-guard --against <rev>  check HEAD's diff against <rev> (proposal check)
+#   fork-only-guard --install        install as this repo's pre-commit and
+#                                    pre-merge-commit hooks
+#
+# The list is read from master, so a feature branch cut from an older master
+# is still checked against the current list.
+
+set -euo pipefail
+
+TRUNK=master
+
+if [ "${1:-}" = "--install" ]; then
+    hooks="$(git rev-parse --git-common-dir)/hooks"
+    self="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+    for hook in pre-commit pre-merge-commit; do
+        cp "$self" "$hooks/$hook"
+        chmod +x "$hooks/$hook"
+        echo "installed $hooks/$hook"
+    done
+    exit 0
+fi
+
+if [ "${1:-}" = "--against" ]; then
+    [ -n "${2:-}" ] || { echo "usage: $0 --against <rev>" >&2; exit 2; }
+    changed="$(git diff --name-only "$2" HEAD)"
+    where="HEAD differs from $2 in"
+else
+    branch="$(git symbolic-ref --quiet --short HEAD || true)"
+    [ "$branch" = "$TRUNK" ] && exit 0
+    changed="$(git diff --cached --name-only)"
+    where="this commit on '${branch:-detached HEAD}' touches"
+fi
+
+if list="$(git show "$TRUNK:.fork-only" 2>/dev/null)"; then
+    :
+elif [ -f .fork-only ]; then
+    list="$(cat .fork-only)"
+else
+    # No list anywhere (e.g. a propose/* branch): nothing to guard.
+    exit 0
+fi
+
+hits=""
+while IFS= read -r path; do
+    [ -z "$path" ] && continue
+    while IFS= read -r entry; do
+        case "$entry" in ''|'#'*) continue ;; esac
+        case "$entry" in
+            */) case "$path" in "$entry"*) hits="$hits  $path"$'\n'; break ;; esac ;;
+            *)  [ "$path" = "$entry" ] && { hits="$hits  $path"$'\n'; break; } ;;
+        esac
+    done <<< "$list"
+done <<< "$changed"
+
+[ -z "$hits" ] && exit 0
+
+cat >&2 <<EOF
+fork-only-guard: $where fork-only paths:
+$hits
+These belong on $TRUNK, never on a feature, ticket, or propose branch.
+Commit them on $TRUNK (a 'git worktree' for $TRUNK avoids switching branches),
+then bring them to the feature branch with the "Staying current" rebase in
+docs/fork-and-upstream-workflow.md. Never merge $TRUNK into a feature branch.
+EOF
+exit 1
